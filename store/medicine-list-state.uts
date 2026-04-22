@@ -1,0 +1,31 @@
+import { reactive } from 'vue'
+
+export type MedicineListState = {
+	keyword: string
+	selectedStatus: string
+	medicines: any[]
+}
+
+export const medicineListState = reactive({
+	keyword: '',
+	selectedStatus: 'ALL',
+	medicines: [] as any[],
+} as MedicineListState)
+
+export function setMedicineListKeyword(value : string) {
+	medicineListState.keyword = value
+}
+
+export function setMedicineListSelectedStatus(value : string) {
+	medicineListState.selectedStatus = value
+}
+
+export function setMedicineListMedicines(value : any[]) {
+	medicineListState.medicines = value
+}
+
+export function resetMedicineListState() {
+	medicineListState.keyword = ''
+	medicineListState.selectedStatus = 'ALL'
+	medicineListState.medicines = []
+}

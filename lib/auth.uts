@@ -1,0 +1,24 @@
+const ACCESS_TOKEN_KEY = 'rm_access_token'
+const REFRESH_TOKEN_KEY = 'rm_refresh_token'
+
+export function getAccessToken() {
+	const value = uni.getStorageSync(ACCESS_TOKEN_KEY)
+	return value != null ? value as string : ''
+}
+
+export function getRefreshToken() {
+	const value = uni.getStorageSync(REFRESH_TOKEN_KEY)
+	return value != null ? value as string : ''
+}
+
+export function setTokens(accessToken : string, refreshToken : string | null = null) {
+	uni.setStorageSync(ACCESS_TOKEN_KEY, accessToken)
+	if (refreshToken != null && refreshToken != '') {
+		uni.setStorageSync(REFRESH_TOKEN_KEY, refreshToken)
+	}
+}
+
+export function clearTokens() {
+	uni.removeStorageSync(ACCESS_TOKEN_KEY)
+	uni.removeStorageSync(REFRESH_TOKEN_KEY)
+}

@@ -1,0 +1,118 @@
+<template>
+	<view class="custom-tabbar-shell">
+		<view class="custom-tabbar">
+			<view class="custom-tabbar-row">
+				<view class="custom-tabbar-slot">
+					<view class="tabbar-item" :class="activeTab == 'medicine-box' ? 'tabbar-item-active' : ''" @click="handleChange('medicine-box')">
+						<text class="tabbar-icon material-symbols-outlined" :class="activeTab == 'medicine-box' ? 'tabbar-icon-active' : ''">medical_services</text>
+						<text class="tabbar-label" :class="activeTab == 'medicine-box' ? 'tabbar-label-active' : ''">药箱</text>
+					</view>
+				</view>
+
+				<view class="custom-tabbar-slot">
+					<view class="tabbar-item" :class="activeTab == 'entry' ? 'tabbar-item-active' : ''" @click="handleChange('entry')">
+						<text class="tabbar-icon tabbar-icon-entry material-symbols-outlined" :class="activeTab == 'entry' ? 'tabbar-icon-active' : ''">post_add</text>
+						<text class="tabbar-label" :class="activeTab == 'entry' ? 'tabbar-label-active' : ''">录入</text>
+					</view>
+				</view>
+
+				<view class="custom-tabbar-slot">
+					<view class="tabbar-item" :class="activeTab == 'profile' ? 'tabbar-item-active' : ''" @click="handleChange('profile')">
+						<text class="tabbar-icon material-symbols-outlined" :class="activeTab == 'profile' ? 'tabbar-icon-active' : ''">person</text>
+						<text class="tabbar-label" :class="activeTab == 'profile' ? 'tabbar-label-active' : ''">我的</text>
+					</view>
+				</view>
+			</view>
+		</view>
+	</view>
+</template>
+
+<script setup lang="uts">
+	type TabKey = 'medicine-box' | 'entry' | 'profile'
+
+	const emit = defineEmits(['change'])
+	defineProps<{
+		activeTab: TabKey
+	}>()
+
+	function handleChange(tab : TabKey) {
+		emit('change', tab)
+	}
+</script>
+
+<style>
+	.custom-tabbar-shell {
+		position: fixed;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		z-index: 30;
+	}
+
+	.custom-tabbar {
+		padding-top: 14px;
+		padding-right: 20px;
+		padding-bottom: 22px;
+		padding-left: 20px;
+		border-top-left-radius: 20px;
+		border-top-right-radius: 20px;
+		background-color: rgba(255, 255, 255, 0.92);
+	}
+
+	.custom-tabbar-row {
+		flex-direction: row;
+		align-items: flex-end;
+		justify-content: space-between;
+	}
+
+	.custom-tabbar-slot {
+		flex: 1;
+		justify-content: center;
+		align-items: center;
+	}
+
+	.tabbar-item {
+		min-width: 74px;
+		padding-top: 8px;
+		padding-right: 14px;
+		padding-bottom: 8px;
+		padding-left: 14px;
+		align-items: center;
+	}
+
+	.tabbar-item-active {
+		border-radius: 22px;
+		background-color: #ebf8f8;
+	}
+
+	.tabbar-icon {
+		font-size: 20px;
+		font-weight: 700;
+		line-height: 20px;
+		color: #97a3a5;
+	}
+
+	.tabbar-icon-entry {
+		font-size: 18px;
+	}
+
+	.tabbar-icon-active {
+		color: #006067;
+	}
+
+	.tabbar-label {
+		margin-top: 6px;
+		font-size: 10px;
+		font-weight: 600;
+		line-height: 10px;
+		color: #97a3a5;
+	}
+
+	.tabbar-label-active {
+		color: #006067;
+	}
+
+	.material-symbols-outlined {
+		font-family: 'Material Symbols Outlined';
+	}
+</style>

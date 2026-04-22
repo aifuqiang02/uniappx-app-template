@@ -1,0 +1,33 @@
+import { reactive } from 'vue'
+
+export type ProfileState = {
+	nickname: string
+	membershipLevel: string
+	activeMedicineCount: number
+	expiredMedicineCount: number
+}
+
+export const profileState = reactive({
+	nickname: '模板用户',
+	membershipLevel: '标准会员',
+	activeMedicineCount: 0,
+	expiredMedicineCount: 0,
+} as ProfileState)
+
+export function setProfileSnapshot(payload : UTSJSONObject) {
+	const user = payload['user'] as UTSJSONObject
+	const activeMedicineCount = payload['activeMedicineCount'] as number
+	const expiredMedicineCount = payload['expiredMedicineCount'] as number
+
+	profileState.nickname = user['nickname'] != null && user['nickname'] != '' ? user['nickname'] as string : '模板用户'
+	profileState.membershipLevel = user['membershipLevel'] != null && user['membershipLevel'] != '' ? user['membershipLevel'] as string : '标准会员'
+	profileState.activeMedicineCount = activeMedicineCount
+	profileState.expiredMedicineCount = expiredMedicineCount
+}
+
+export function resetProfileState() {
+	profileState.nickname = '模板用户'
+	profileState.membershipLevel = '标准会员'
+	profileState.activeMedicineCount = 0
+	profileState.expiredMedicineCount = 0
+}

@@ -1,0 +1,38 @@
+function toChooseImageError(error : any) {
+	if (error instanceof Error) {
+		return error
+	}
+
+	return new Error('选图失败')
+}
+
+export function chooseImageRaw(maxCount : number) : Promise<UTSJSONObject> {
+	return new Promise((resolve, reject) => {
+		console.log('[media.chooseImageRaw] start maxCount', maxCount)
+		uni.chooseImage({
+			count: maxCount,
+			sizeType: ['compressed'],
+			sourceType: ['album', 'camera'],
+			// #ifdef APP-ANDROID
+			albumMode: 'system',
+			// #endif
+			success: (result) => {
+				const payload : UTSJSONObject = {
+					'tempFilePaths': result.tempFilePaths,
+					'tempFiles': result.tempFiles
+				}
+				console.log('[media.chooseImageRaw] success', JSON.stringify(payload))
+				resolve(payload)
+			},
+			fail: (error) => {
+				const errorMap = error as UTSJSONObject | null
+				const errCode = errorMap != null ? errorMap['errCode'] : null
+				const errMsg = errorMap != null ? errorMap['errMsg'] : null
+				console.log('[media.chooseImageRaw] fail raw', JSON.stringify(error))
+				console.log('[media.chooseImageRaw] fail errCode', errCode)
+				console.log('[media.chooseImageRaw] fail errMsg', errMsg)
+				reject(toChooseImageError(error))
+			}
+		})
+	})
+}

@@ -1,0 +1,72 @@
+import { reactive } from 'vue'
+
+export type MedicineEntryDraftState = {
+	editingMedicineId: string
+	uploadedImages: any[]
+	pendingDeleteObjectKeys: string[]
+	isUploading: boolean
+	formName: string
+	formInstructions: string
+	formExpiry: string
+	formQuantity: string
+}
+
+export const medicineEntryDraftState = reactive({
+	editingMedicineId: '',
+	uploadedImages: [] as any[],
+	pendingDeleteObjectKeys: [] as string[],
+	isUploading: false,
+	formName: '',
+	formInstructions: '',
+	formExpiry: '',
+	formQuantity: '',
+} as MedicineEntryDraftState)
+
+export function resetMedicineEntryDraftState() {
+	medicineEntryDraftState.editingMedicineId = ''
+	medicineEntryDraftState.formName = ''
+	medicineEntryDraftState.formInstructions = ''
+	medicineEntryDraftState.formExpiry = ''
+	medicineEntryDraftState.formQuantity = ''
+	medicineEntryDraftState.uploadedImages = []
+	medicineEntryDraftState.pendingDeleteObjectKeys = []
+	medicineEntryDraftState.isUploading = false
+}
+
+export function applyMedicineEntryDraft(draft : UTSJSONObject) {
+	medicineEntryDraftState.editingMedicineId = draft['editingMedicineId'] as string
+	medicineEntryDraftState.formName = draft['formName'] as string
+	medicineEntryDraftState.formInstructions = draft['formInstructions'] as string
+	medicineEntryDraftState.formExpiry = draft['formExpiry'] as string
+	medicineEntryDraftState.formQuantity = draft['formQuantity'] as string
+	medicineEntryDraftState.uploadedImages = draft['uploadedImages'] as any[]
+	medicineEntryDraftState.pendingDeleteObjectKeys = []
+}
+
+export function setMedicineEntryFormName(value : string) {
+	medicineEntryDraftState.formName = value
+}
+
+export function setMedicineEntryFormInstructions(value : string) {
+	medicineEntryDraftState.formInstructions = value
+}
+
+export function setMedicineEntryFormExpiry(value : string) {
+	medicineEntryDraftState.formExpiry = value
+}
+
+export function setMedicineEntryFormQuantity(value : string) {
+	medicineEntryDraftState.formQuantity = value
+}
+
+export function setMedicineEntryUploading(value : boolean) {
+	medicineEntryDraftState.isUploading = value
+}
+
+export function setMedicineEntryUploadedImages(images : any[]) {
+	medicineEntryDraftState.uploadedImages = images
+}
+
+export function setMedicineEntryPendingDeleteObjectKeys(keys : string[]) {
+	medicineEntryDraftState.pendingDeleteObjectKeys = keys
+}

@@ -1,0 +1,142 @@
+import { API_BASE_URL } from './config.uts'
+import { getAccessToken } from './auth.uts'
+
+function getErrorMessage(error : any, fallback : string) {
+	if (error instanceof Error && error.message != '') {
+		return error.message
+	}
+
+	return fallback
+}
+
+function toThrowable(error : any, fallback : string) {
+	if (error instanceof Error) {
+		return error
+	}
+
+	return new Error(getErrorMessage(error, fallback))
+}
+
+function uploadFileRaw(url : string, filePath : string, header : UTSJSONObject) : Promise<UTSJSONObject> {
+	return new Promise((resolve, reject) => {
+		console.log('[upload.uploadFileRaw] start', url)
+		console.log('[upload.uploadFileRaw] filePath', filePath)
+		console.log('[upload.uploadFileRaw] header', JSON.stringify(header))
+		uni.uploadFile({
+			url,
+			filePath,
+			name: 'file',
+			header,
+			success: (response) => {
+				const resultMap : UTSJSONObject = {
+					'statusCode': response.statusCode,
+					'data': response.data
+				}
+				console.log('[upload.uploadFileRaw] success statusCode', response.statusCode)
+				console.log('[upload.uploadFileRaw] success data', response.data)
+				resolve(resultMap)
+			},
+			fail: (error) => {
+				const errorMap = error as UTSJSONObject | null
+				const errCode = errorMap != null ? errorMap['errCode'] : null
+				const errMsg = errorMap != null ? errorMap['errMsg'] : null
+				console.log('[upload.uploadFileRaw] fail raw', JSON.stringify(error))
+				console.log('[upload.uploadFileRaw] fail errCode', errCode)
+				console.log('[upload.uploadFileRaw] fail errMsg', errMsg)
+				reject(toThrowable(error, '图片上传失败'))
+			}
+		})
+	})
+}
+
+
+function requestRaw(url : string, method : string, header : UTSJSONObject) : Promise<UTSJSONObject> {
+	return new Promise((resolve, reject) => {
+		console.log('[upload.requestRaw] start', method, url)
+		console.log('[upload.requestRaw] header', JSON.stringify(header))
+		uni.request({
+			url,
+			method,
+			header,
+			success: (response) => {
+				console.log('[upload.requestRaw] success statusCode', response.statusCode)
+				console.log('[upload.requestRaw] success data', JSON.stringify(response.data))
+				const resultMap : UTSJSONObject = {
+					'statusCode': response.statusCode,
+					'data': response.data
+				}
+				resolve(resultMap)
+			},
+			fail: (error) => {
+				console.log('[upload.requestRaw] fail', JSON.stringify(error))
+				reject(toThrowable(error, 'Request failed'))
+			}
+		})
+	})
+}
+
+export async function uploadImage(filePath : string) {
+	const token = getAccessToken()
+	const header : UTSJSONObject = {}
+
+	if (token != null && token != '') {
+		header['Authorization'] = 'Bearer ' + token
+	}
+
+	console.log('[uploadImage] start')
+	console.log('[uploadImage] url', API_BASE_URL + '/uploads/images')
+	console.log('[uploadImage] filePath', filePath)
+	console.log('[uploadImage] hasToken', token != null && token != '')
+	console.log('[uploadImage] header', JSON.stringify(header))
+
+	const resultMap = await uploadFileRaw(API_BASE_URL + '/uploads/images', filePath, header)
+
+	const rawData = resultMap['data'] as string | null
+	console.log('[uploadImage] statusCode', resultMap['statusCode'])
+	console.log('[uploadImage] rawData', rawData != null ? rawData : 'null')
+	const payload = JSON.parse(rawData != null ? rawData : '{}') as UTSJSONObject
+	const statusCode = resultMap['statusCode'] as number
+	const code = payload['code'] as number | null
+	const data = payload['data'] as UTSJSONObject | null
+	const image = data != null ? data['image'] : null
+	console.log('[uploadImage] parsed code', code)
+	console.log('[uploadImage] parsed data', data != null ? JSON.stringify(data) : 'null')
+	console.log('[uploadImage] parsed image', image != null ? JSON.stringify(image) : 'null')
+
+	if (statusCode < 200 || statusCode >= 300 || code != 200 || image == null) {
+		const msg = payload['msg'] as string | null
+		console.log('[uploadImage] failed msg', msg != null ? msg : 'null')
+		throw new Error(msg != null && msg != '' ? msg : '图片上传失败')
+	}
+
+	console.log('[uploadImage] success')
+
+	return image
+}
+
+export async function deleteImage(objectKey : string) {
+	const token = getAccessToken()
+	const header : UTSJSONObject = {}
+
+	if (token != null && token != '') {
+		header['Authorization'] = 'Bearer ' + token
+	}
+
+	console.log('[deleteImage] start', objectKey)
+
+	const resultMap = await requestRaw(API_BASE_URL + '/uploads/images?objectKey=' + encodeURIComponent(objectKey), 'DELETE', header)
+
+	const statusCode = resultMap['statusCode'] as number
+	const payload = resultMap['data'] as UTSJSONObject | null
+	const code = payload != null ? payload['code'] as number | null : null
+	console.log('[deleteImage] statusCode', statusCode)
+	console.log('[deleteImage] payload', payload != null ? JSON.stringify(payload) : 'null')
+
+	if (statusCode < 200 || statusCode >= 300 || code != 200) {
+		const msg = payload != null ? payload['msg'] as string | null : null
+		console.log('[deleteImage] failed msg', msg != null ? msg : 'null')
+		throw new Error(msg != null && msg != '' ? msg : '图片删除失败')
+	}
+
+	console.log('[deleteImage] success')
+}

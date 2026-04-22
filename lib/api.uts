@@ -1,0 +1,73 @@
+import { API_BASE_URL } from './config.uts'
+import { clearTokens, getAccessToken } from './auth.uts'
+
+export function getErrorMessage(error : any, fallback : string) {
+	if (error instanceof Error && error.message != '') {
+		return error.message
+	}
+
+	return fallback
+}
+
+function toThrowable(error : any, fallback : string) {
+	if (error instanceof Error) {
+		return error
+	}
+
+	return new Error(getErrorMessage(error, fallback))
+}
+
+
+function requestRaw(url : string, method : string, data : any | null, header : UTSJSONObject) : Promise<UTSJSONObject> {
+	return new Promise((resolve, reject) => {
+		uni.request({
+			url,
+			method,
+			data,
+			header,
+			success: (response) => {
+				const resultMap : UTSJSONObject = {
+					'statusCode': response.statusCode,
+					'data': response.data
+				}
+				resolve(resultMap)
+			},
+			fail: (error) => {
+				reject(toThrowable(error, 'Request failed'))
+			}
+		})
+	})
+}
+
+export async function apiRequest(path : string, method : string = 'GET', data : any | null = null, auth : boolean = false) {
+	const token = getAccessToken()
+	const header : UTSJSONObject = {
+		'Content-Type': 'application/json'
+	}
+
+	if (auth && token != null && token != '') {
+		header['Authorization'] = 'Bearer ' + token
+	}
+
+	const resultMap = await requestRaw(API_BASE_URL + path, method, data, header)
+
+	const statusCode = resultMap['statusCode'] as number
+	const payload = resultMap['data'] as UTSJSONObject | null
+
+	if (statusCode == 401) {
+		clearTokens()
+	}
+
+	if (statusCode < 200 || statusCode >= 300 || payload == null) {
+		const message = payload != null ? payload['msg'] as string | null : null
+		throw new Error(message != null && message != '' ? message : 'Request failed')
+	}
+
+	const code = payload['code'] as number | null
+	if (code != 200) {
+		const msg = payload['msg'] as string | null
+		throw new Error(msg != null && msg != '' ? msg : 'Request failed')
+	}
+
+	return payload['data']
+}

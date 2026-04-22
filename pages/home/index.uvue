@@ -1,0 +1,284 @@
+<template>
+	<view class="page-shell">
+		<MedicineListTab
+			v-if="activeTab == 'medicine-box'"
+			:keyword="medicineListState.keyword"
+			:selectedStatus="medicineListState.selectedStatus"
+			:medicines="medicineListState.medicines"
+			:contentScrollStyle="contentScrollStyle"
+			@update:keyword="handleKeywordChange"
+			@search="refreshMedicineList"
+			@changeStatus="changeStatus"
+			@edit="handleMedicineEditRequested"
+			@delete="handleMedicineDeleted"
+			@ai="handleAiTodo"
+		/>
+
+		<MedicineEntryTab
+			v-if="activeTab == 'entry'"
+			:editingMedicineId="medicineEntryDraftState.editingMedicineId"
+			:uploadedImages="medicineEntryDraftState.uploadedImages"
+			:formName="medicineEntryDraftState.formName"
+			:formInstructions="medicineEntryDraftState.formInstructions"
+			:formExpiry="medicineEntryDraftState.formExpiry"
+			:formQuantity="medicineEntryDraftState.formQuantity"
+			:contentScrollStyle="contentScrollStyle"
+			@todo="handleTodoEvent"
+			@chooseImage="chooseImage"
+			@removeImage="removeImage"
+			@save="handleEntrySubmitted"
+			@update:formName="handleFormNameChange"
+			@update:formInstructions="handleFormInstructionsChange"
+			@update:formExpiry="handleFormExpiryChange"
+			@update:formQuantity="handleFormQuantityChange"
+		/>
+
+		<ProfileTab
+			v-if="activeTab == 'profile'"
+			:nickname="profileState.nickname"
+			:membershipLevel="profileState.membershipLevel"
+			:activeMedicineCount="profileState.activeMedicineCount"
+			:expiredMedicineCount="profileState.expiredMedicineCount"
+			:contentScrollStyle="contentScrollStyle"
+			@openMedicineStats="handleProfileStatsRequested"
+			@todo="handleTodoEvent"
+			@logout="logout"
+		/>
+
+		<CustomTabbar :activeTab="activeTab" @change="changeTab" />
+	</view>
+</template>
+
+<script setup lang="uts">
+	import { onShow } from '@dcloudio/uni-app'
+	import { ref } from 'vue'
+	import { clearTokens, getAccessToken } from '../../lib/auth.uts'
+	import { medicineListState, setMedicineListKeyword, setMedicineListMedicines, setMedicineListSelectedStatus } from '../../store/medicine-list-state.uts'
+	import { profileState, resetProfileState } from '../../store/profile-state.uts'
+	import {
+		deleteMedicineAction,
+		editMedicineAction,
+		fetchMedicineListAction,
+		fetchProfileSnapshotAction,
+		chooseImageAction,
+		removeImageAction,
+		saveMedicineEntryAction,
+	} from './home-logic.uts'
+	import {
+		medicineEntryDraftState,
+		resetMedicineEntryDraftState,
+		setMedicineEntryFormExpiry,
+		setMedicineEntryFormInstructions,
+		setMedicineEntryFormName,
+		setMedicineEntryFormQuantity,
+	} from '../../store/medicine-entry-draft-state.uts'
+	import CustomTabbar from './components/custom-tabbar.uvue'
+	import MedicineListTab from './components/medicine-list-tab.uvue'
+	import MedicineEntryTab from './components/medicine-entry-tab.uvue'
+	import ProfileTab from './components/profile-tab.uvue'
+
+	type TabKey = 'medicine-box' | 'entry' | 'profile'
+
+	const activeTab = ref<TabKey>('medicine-box')
+	const contentScrollStyle = ref('')
+
+	function showTodo(name : string) {
+		uni.showToast({
+			title: name + '待接入',
+			icon: 'none'
+		})
+	}
+
+	function handleKeywordChange(value : string) {
+		setMedicineListKeyword(value)
+	}
+
+	function handleTodoEvent(name : string) {
+		showTodo(name)
+	}
+
+	function handleAiTodo() {
+		showTodo('AI 对话')
+	}
+
+	function handleFormNameChange(value : string) {
+		setMedicineEntryFormName(value)
+	}
+
+	function handleFormInstructionsChange(value : string) {
+		setMedicineEntryFormInstructions(value)
+	}
+
+	function handleFormExpiryChange(value : string) {
+		setMedicineEntryFormExpiry(value)
+	}
+
+	function handleFormQuantityChange(value : string) {
+		setMedicineEntryFormQuantity(value)
+	}
+
+	function updateContentScrollStyle() {
+		const windowInfo = uni.getWindowInfo()
+		const windowHeight = windowInfo.windowHeight as number
+		const headerHeight = 92
+		const tabbarHeight = 92
+		const contentHeight = windowHeight - headerHeight - tabbarHeight
+		contentScrollStyle.value = 'height:' + contentHeight + 'px;'
+		console.log('[home] contentScrollStyle', contentScrollStyle.value)
+	}
+
+	async function refreshMedicineList() {
+		try {
+			await fetchMedicineListAction(medicineListState.keyword, medicineListState.selectedStatus)
+		} catch (error) {
+			setMedicineListMedicines([])
+			uni.showToast({
+				title: '加载失败',
+				icon: 'none'
+			})
+		}
+	}
+
+	async function refreshProfileTab() {
+		try {
+			await fetchProfileSnapshotAction()
+		} catch (error) {
+			uni.showToast({
+				title: '加载失败',
+				icon: 'none'
+			})
+		}
+	}
+
+	function changeTab(tab : TabKey) {
+		activeTab.value = tab
+		if (tab == 'medicine-box') {
+			refreshMedicineList()
+		}
+		if (tab == 'profile') {
+			refreshProfileTab()
+		}
+	}
+
+	function changeStatus(status : string) {
+		setMedicineListSelectedStatus(status)
+		refreshMedicineList()
+	}
+
+	function resetEntryForm() {
+		resetMedicineEntryDraftState()
+	}
+
+	function handleMedicineEditRequested(draft : any) {
+		editMedicineAction(draft as UTSJSONObject)
+		changeTab('entry')
+	}
+
+	async function handleMedicineDeleted(id : string) {
+		try {
+			await deleteMedicineAction(id)
+			uni.showToast({
+				title: '药品已删除',
+				icon: 'success'
+			})
+			refreshMedicineList()
+			refreshProfileTab()
+		} catch (error) {
+			uni.showToast({
+				title: '删除失败',
+				icon: 'none'
+			})
+		}
+	}
+
+	async function chooseImage() {
+		const errorMessage = await chooseImageAction()
+		if (errorMessage != null && errorMessage != '') {
+			uni.showToast({
+				title: errorMessage,
+				icon: 'none'
+			})
+		}
+	}
+
+	function removeImage(index : number) {
+		removeImageAction(index)
+	}
+
+	async function handleEntrySubmitted(detail : UTSJSONObject) {
+		try {
+			const result = await saveMedicineEntryAction(detail)
+			const success = result['success'] as boolean
+			if (!success) {
+				uni.showToast({
+					title: result['message'] as string,
+					icon: 'none'
+				})
+				return
+			}
+			const updated = result['updated'] as boolean
+			uni.showToast({
+				title: updated ? '药品已更新' : '药品已保存',
+				icon: 'success'
+			})
+
+			resetEntryForm()
+			changeTab('medicine-box')
+			refreshMedicineList()
+			refreshProfileTab()
+		} catch (error) {
+			uni.showToast({
+				title: '保存失败',
+				icon: 'none'
+			})
+		}
+	}
+
+	function handleProfileStatsRequested(status : string) {
+		setMedicineListSelectedStatus(status)
+		changeTab('medicine-box')
+		refreshMedicineList()
+	}
+
+	function logout() {
+		clearTokens()
+		resetProfileState()
+		uni.reLaunch({
+			url: '/pages/login/index'
+		})
+	}
+
+	onShow(() => {
+		updateContentScrollStyle()
+		const token = getAccessToken()
+		if (token == null || token == '') {
+			uni.reLaunch({
+				url: '/pages/login/index'
+			})
+			return
+		}
+
+		const medicineChanged = uni.getStorageSync('medicine_changed')
+		if (medicineChanged == '1') {
+			uni.removeStorageSync('medicine_changed')
+			refreshMedicineList()
+			refreshProfileTab()
+			return
+		}
+
+		if (medicineListState.medicines.length == 0) {
+			refreshMedicineList()
+		}
+		if (activeTab.value == 'profile' && profileState.nickname == '模板用户') {
+			refreshProfileTab()
+		}
+	})
+</script>
+
+<style>
+	.page-shell {
+		min-height: 1000px;
+		background-color: #f7fbfb;
+		position: relative;
+	}
+</style>
