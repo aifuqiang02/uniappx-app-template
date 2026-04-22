@@ -62,3 +62,19 @@ uniappx-app-template/
 
 1. 本地复制：`D:\git-projects\uniappx-app-template`
 2. 远程克隆：`git clone https://github.com/aifuqiang02/uniappx-app-template my-app`
+
+## GitHub 仓库建议
+
+推荐 About：
+
+`uni-app x App starter template with login, home shell, state management, upload helpers, and multi-page examples.`
+
+推荐 Topics：
+
+- `uni-app`
+- `uni-app-x`
+- `uvue`
+- `uts`
+- `mobile-app`
+- `app-template`
+- `starter-template`
