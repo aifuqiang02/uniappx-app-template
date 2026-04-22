@@ -2,6 +2,9 @@
 
 `uni-app x` App 模板项目，适合作为移动端 App 基础壳快速复制使用。
 
+- GitHub 仓库：`https://github.com/aifuqiang02/uniappx-app-template`
+- 本地模板目录：`D:\git-projects\uniappx-app-template`
+
 ## 模板包含内容
 
 - 登录页示例：一键登录 + 验证码登录双态
@@ -54,3 +57,8 @@ uniappx-app-template/
 2. 初始化自己的 Git 仓库。
 3. 完成应用名、接口地址、登录协议文案替换。
 4. 根据业务改首页 tab 结构和数据模型。
+
+## 获取方式
+
+1. 本地复制：`D:\git-projects\uniappx-app-template`
+2. 远程克隆：`git clone https://github.com/aifuqiang02/uniappx-app-template my-app`
