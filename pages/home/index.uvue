@@ -6,6 +6,7 @@
 			:selectedStatus="medicineListState.selectedStatus"
 			:medicines="medicineListState.medicines"
 			:contentScrollStyle="contentScrollStyle"
+			:safeTopInset="safeTopInset"
 			@update:keyword="handleKeywordChange"
 			@search="refreshMedicineList"
 			@changeStatus="changeStatus"
@@ -22,7 +23,8 @@
 			:formInstructions="medicineEntryDraftState.formInstructions"
 			:formExpiry="medicineEntryDraftState.formExpiry"
 			:formQuantity="medicineEntryDraftState.formQuantity"
-			:contentScrollStyle="contentScrollStyle"
+			:contentScrollStyle="entryContentScrollStyle"
+			:safeTopInset="safeTopInset"
 			@todo="handleTodoEvent"
 			@chooseImage="chooseImage"
 			@removeImage="removeImage"
@@ -40,6 +42,7 @@
 			:activeMedicineCount="profileState.activeMedicineCount"
 			:expiredMedicineCount="profileState.expiredMedicineCount"
 			:contentScrollStyle="contentScrollStyle"
+			:safeTopInset="safeTopInset"
 			@openMedicineStats="handleProfileStatsRequested"
 			@todo="handleTodoEvent"
 			@logout="logout"
@@ -81,6 +84,8 @@
 
 	const activeTab = ref<TabKey>('medicine-box')
 	const contentScrollStyle = ref('')
+	const entryContentScrollStyle = ref('')
+	const safeTopInset = ref(0)
 
 	function showTodo(name : string) {
 		uni.showToast({
@@ -120,10 +125,25 @@
 	function updateContentScrollStyle() {
 		const windowInfo = uni.getWindowInfo()
 		const windowHeight = windowInfo.windowHeight as number
-		const headerHeight = 92
+		const statusBarHeight = windowInfo.statusBarHeight as number
+		const safeAreaInsets = windowInfo.safeAreaInsets
+		let topInset = statusBarHeight
+		if (safeAreaInsets != null) {
+			const safeTop = safeAreaInsets.top as number
+			if (safeTop > topInset) {
+				topInset = safeTop
+			}
+		}
+		if (topInset > 20) {
+			topInset = topInset - 20
+		}
+		safeTopInset.value = topInset
+
+		const headerHeight = topInset + 64
 		const tabbarHeight = 92
 		const contentHeight = windowHeight - headerHeight - tabbarHeight
 		contentScrollStyle.value = 'height:' + contentHeight + 'px;'
+		entryContentScrollStyle.value = 'height:' + (windowHeight - tabbarHeight) + 'px;'
 		console.log('[home] contentScrollStyle', contentScrollStyle.value)
 	}
 

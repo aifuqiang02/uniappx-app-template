@@ -1,79 +1,91 @@
 <template>
 	<view class="page-flow">
 		<view class="page">
-			<view class="header">
-				<text class="header-title">AppKit</text>
-				<text class="header-subtitle">Starter</text>
+			<view class="top-bar" :style="topBarStyle()">
+				<text class="top-bar-title">AppKit Starter</text>
 			</view>
 
 			<scroll-view scroll-y direction="vertical" show-scrollbar class="content-scroll" :style="contentScrollStyle">
 				<view class="content">
-					<view class="section-card search-card">
-						<input
-							:modelValue="keyword"
-							class="search-input"
-							placeholder="搜索药品名称"
-							placeholder-class="placeholder"
-							@input="handleKeywordInput"
-						/>
-						<view class="small-button" @click="emit('search')">
-							<text class="small-button-text">搜索</text>
+					<view class="search-section">
+						<view class="search-bar">
+							<text class="search-icon material-symbols-outlined">search</text>
+							<input
+								:modelValue="keyword"
+								class="search-input"
+								placeholder="搜索药品..."
+								placeholder-class="placeholder"
+								@input="handleKeywordInput"
+								@confirm="emit('search')"
+							/>
+						</view>
+
+						<view class="filter-row">
+							<view class="filter-pill" :class="selectedStatus == 'ALL' ? 'filter-pill-active' : ''" @click="emit('changeStatus', 'ALL')">
+								<text class="filter-pill-text" :class="selectedStatus == 'ALL' ? 'filter-pill-text-active' : ''">全部</text>
+							</view>
+							<view class="filter-pill" :class="selectedStatus == 'ACTIVE' ? 'filter-pill-active' : ''" @click="emit('changeStatus', 'ACTIVE')">
+								<text class="filter-pill-text" :class="selectedStatus == 'ACTIVE' ? 'filter-pill-text-active' : ''">未过期</text>
+							</view>
+							<view class="filter-pill" :class="selectedStatus == 'EXPIRED' ? 'filter-pill-active' : ''" @click="emit('changeStatus', 'EXPIRED')">
+								<text class="filter-pill-text" :class="selectedStatus == 'EXPIRED' ? 'filter-pill-text-active' : ''">已过期</text>
+							</view>
 						</view>
 					</view>
 
-					<view class="filter-row">
-						<view class="filter-item" :class="selectedStatus == 'ALL' ? 'filter-item-active' : ''" @click="emit('changeStatus', 'ALL')">
-							<text class="filter-text" :class="selectedStatus == 'ALL' ? 'filter-text-active' : ''">全部</text>
-						</view>
-						<view class="filter-item" :class="selectedStatus == 'ACTIVE' ? 'filter-item-active' : ''" @click="emit('changeStatus', 'ACTIVE')">
-							<text class="filter-text" :class="selectedStatus == 'ACTIVE' ? 'filter-text-active' : ''">未过期</text>
-						</view>
-						<view class="filter-item" :class="selectedStatus == 'EXPIRED' ? 'filter-item-active' : ''" @click="emit('changeStatus', 'EXPIRED')">
-							<text class="filter-text" :class="selectedStatus == 'EXPIRED' ? 'filter-text-active' : ''">已过期</text>
-						</view>
-					</view>
-
-					<view v-if="medicines.length == 0" class="section-card empty-card">
+					<view v-if="medicines.length == 0" class="empty-card">
 						<text class="empty-title">暂无药品</text>
 						<text class="empty-desc">录入后会在这里展示库存和有效期</text>
 					</view>
 
-					<view v-for="(item, index) in medicines" :key="index" class="section-card medicine-card">
-						<view class="medicine-top">
-							<view>
+					<view v-for="(item, index) in medicines" :key="index" class="medicine-card" :class="isExpired(item) ? 'medicine-card-expired' : ''" @click="openActionSheet(item)">
+						<view class="medicine-image-wrap">
+							<image v-if="medicineImage(item) != ''" class="medicine-image" :src="medicineImage(item)" mode="aspectFill"></image>
+							<view v-else class="medicine-image medicine-image-placeholder">
+								<text class="medicine-image-placeholder-text">无图</text>
+							</view>
+						</view>
+
+						<view class="medicine-main">
+							<view class="medicine-copy">
 								<text class="medicine-name">{{ medicineName(item) }}</text>
 								<text class="medicine-category">{{ medicineCategory(item) }}</text>
 							</view>
-							<image v-if="medicineImage(item) != ''" class="medicine-image" :src="medicineImage(item)" mode="aspectFill"></image>
-							<view v-else class="medicine-image medicine-image-placeholder">
-								<text class="medicine-image-text">无图</text>
-							</view>
-						</view>
 
-						<view class="medicine-meta-row">
-							<view class="medicine-meta">
-								<text class="medicine-meta-label">剩余数量</text>
-								<text class="medicine-meta-value">{{ medicineStockText(item) }}</text>
-							</view>
-							<view class="medicine-meta medicine-meta-right">
-								<text class="medicine-meta-label">有效期至</text>
-								<text class="medicine-meta-value">{{ medicineExpiry(item) }}</text>
-							</view>
-						</view>
+							<view class="medicine-meta-row">
+								<view class="medicine-meta-block">
+									<text class="medicine-meta-label">剩余</text>
+									<text class="medicine-stock-value" :class="isExpired(item) ? 'medicine-stock-value-expired' : ''">{{ medicineStockText(item) }}</text>
+								</view>
 
-						<view class="action-row">
-							<view class="action-button" @click="handleEdit(item)">
-								<text class="action-button-text">编辑</text>
+								<view class="medicine-meta-block medicine-meta-block-right">
+									<text class="medicine-meta-label">有效期至</text>
+									<text class="medicine-expiry-value" :class="isExpired(item) ? 'medicine-expiry-value-expired' : ''">{{ medicineExpiry(item) }}</text>
+								</view>
 							</view>
-							<view class="action-button action-button-danger" @click="emit('delete', medicineId(item))">
-								<text class="action-button-danger-text">删除</text>
-							</view>
+
 						</view>
 					</view>
 
 					<view class="page-bottom-spacer"></view>
 				</view>
 			</scroll-view>
+		</view>
+
+		<view v-if="actionSheetVisible" class="action-sheet-mask" @click="closeActionSheet"></view>
+		<view v-if="actionSheetVisible" class="action-sheet">
+			<view class="action-sheet-panel">
+				<text class="action-sheet-title">{{ selectedMedicineName }}</text>
+				<view class="action-sheet-button" @click="handleSheetEdit">
+					<text class="action-sheet-button-text">编辑药品</text>
+				</view>
+				<view class="action-sheet-button action-sheet-button-danger" @click="handleSheetDelete">
+					<text class="action-sheet-button-danger-text">删除药品</text>
+				</view>
+				<view class="action-sheet-cancel" @click="closeActionSheet">
+					<text class="action-sheet-cancel-text">取消</text>
+				</view>
+			</view>
 		</view>
 
 		<view class="ai-fab" @click="emit('ai')">
@@ -83,6 +95,7 @@
 </template>
 
 <script setup lang="uts">
+	import { ref } from 'vue'
 	import { createEntryDraft } from '../home-logic.uts'
 
 	const emit = defineEmits(['update:keyword', 'search', 'changeStatus', 'edit', 'delete', 'ai'])
@@ -91,7 +104,11 @@
 		selectedStatus: string
 		medicines: any[]
 		contentScrollStyle: string
+		safeTopInset: number
 	}>()
+	const actionSheetVisible = ref(false)
+	const selectedMedicine = ref<any | null>(null)
+	const selectedMedicineName = ref('药品操作')
 
 	function handleKeywordInput(event : InputEvent) {
 		emit('update:keyword', event.detail.value)
@@ -101,9 +118,41 @@
 		emit('edit', createEntryDraft(item))
 	}
 
-	function medicineId(item : any) {
+	function openActionSheet(item : any) {
+		selectedMedicine.value = item
 		const medicine = item as UTSJSONObject
-		return medicine['id'] as string
+		selectedMedicineName.value = medicine['name'] as string
+		actionSheetVisible.value = true
+	}
+
+	function closeActionSheet() {
+		actionSheetVisible.value = false
+		selectedMedicine.value = null
+		selectedMedicineName.value = '药品操作'
+	}
+
+	function handleSheetEdit() {
+		if (selectedMedicine.value == null) {
+			return
+		}
+		const item = selectedMedicine.value as any
+		closeActionSheet()
+		handleEdit(item)
+	}
+
+	function handleSheetDelete() {
+		if (selectedMedicine.value == null) {
+			return
+		}
+		const item = selectedMedicine.value as any
+		const medicine = item as UTSJSONObject
+		const id = medicine['id'] as string
+		closeActionSheet()
+		emit('delete', id)
+	}
+
+	function topBarStyle() {
+		return 'padding-top:' + props.safeTopInset + 'px;height:' + (props.safeTopInset + 64) + 'px;'
 	}
 
 	function medicineName(item : any) {
@@ -130,6 +179,24 @@
 		const medicine = item as UTSJSONObject
 		return medicine['expiry'] as string
 	}
+
+	function isExpired(item : any) {
+		const medicine = item as UTSJSONObject
+		const expiresOn = medicine['expiresOn'] as string | null
+		if (expiresOn == null || expiresOn == '') {
+			return false
+		}
+
+		const expiryDate = expiresOn.slice(0, 10)
+		const today = new Date()
+		const year = today.getFullYear()
+		const month = today.getMonth() + 1
+		const day = today.getDate()
+		const monthText = month < 10 ? '0' + month : '' + month
+		const dayText = day < 10 ? '0' + day : '' + day
+		const todayText = '' + year + '-' + monthText + '-' + dayText
+		return expiryDate < todayText
+	}
 </script>
 
 <style>
@@ -139,30 +206,22 @@
 
 	.page {
 		min-height: 1000px;
-		background-color: #f7fbfb;
+		background-color: #f1f4f4;
 	}
 
-	.header {
-		padding-top: 28px;
-		padding-right: 20px;
-		padding-bottom: 16px;
-		padding-left: 20px;
-		background-color: #ffffff;
-		border-bottom-width: 1px;
-		border-bottom-style: solid;
-		border-bottom-color: #e8eeee;
+	.top-bar {
+		height: 64px;
+		padding-left: 24px;
+		padding-right: 24px;
+		background-color: rgba(255, 255, 255, 0.88);
+		justify-content: center;
 	}
 
-	.header-title {
-		font-size: 28px;
+	.top-bar-title {
+		font-size: 18px;
 		font-weight: 700;
-		color: #006067;
-	}
-
-	.header-subtitle {
-		margin-top: 4px;
-		font-size: 13px;
-		color: #6b7778;
+		line-height: 22px;
+		color: #0b5a5f;
 	}
 
 	.content-scroll {
@@ -170,59 +229,55 @@
 	}
 
 	.content {
-		padding: 16px;
+		padding-top: 20px;
+		padding-left: 16px;
+		padding-right: 16px;
 		padding-bottom: 16px;
 	}
 
-	.page-bottom-spacer {
-		height: 12px;
+	.search-section {
+		margin-bottom: 24px;
 	}
 
-	.section-card {
-		margin-bottom: 16px;
-		padding: 16px;
-		border-radius: 16px;
+	.search-bar {
+		height: 56px;
+		padding-left: 14px;
+		padding-right: 14px;
+		border-bottom-width: 1px;
+		border-bottom-style: solid;
+		border-bottom-color: rgba(189, 201, 202, 0.2);
 		background-color: #ffffff;
-	}
-
-	.search-card {
 		flex-direction: row;
 		align-items: center;
 	}
 
+	.search-icon {
+		font-size: 22px;
+		line-height: 22px;
+		color: #98a4a5;
+	}
+
 	.search-input {
 		flex: 1;
-		height: 44px;
-		padding-left: 14px;
-		padding-right: 14px;
-		border-radius: 12px;
-		background-color: #f1f4f4;
-		font-size: 15px;
+		height: 48px;
+		margin-left: 12px;
+		padding-left: 0;
+		padding-right: 0;
+		background-color: transparent;
+		font-size: 18px;
 		color: #181c1d;
 	}
 
-	.small-button {
-		margin-left: 10px;
-		padding-top: 12px;
-		padding-right: 14px;
-		padding-bottom: 12px;
-		padding-left: 14px;
-		border-radius: 12px;
-		background-color: #006067;
-	}
-
-	.small-button-text {
-		font-size: 13px;
-		font-weight: 600;
-		color: #ffffff;
+	.placeholder {
+		color: #8c9798;
 	}
 
 	.filter-row {
-		margin-bottom: 16px;
+		margin-top: 16px;
 		flex-direction: row;
 	}
 
-	.filter-item {
+	.filter-pill {
 		margin-right: 10px;
 		padding-top: 10px;
 		padding-right: 14px;
@@ -232,144 +287,254 @@
 		background-color: #ffffff;
 	}
 
-	.filter-item-active {
+	.filter-pill-active {
 		background-color: #006067;
 	}
 
-	.filter-text {
+	.filter-pill-text {
 		font-size: 13px;
 		font-weight: 600;
+		line-height: 16px;
 		color: #667172;
 	}
 
-	.filter-text-active {
+	.filter-pill-text-active {
 		color: #ffffff;
 	}
 
 	.empty-card {
+		padding-top: 28px;
+		padding-right: 24px;
+		padding-bottom: 28px;
+		padding-left: 24px;
+		border-radius: 16px;
+		background-color: #ffffff;
 		align-items: center;
 	}
 
 	.empty-title {
 		font-size: 20px;
 		font-weight: 700;
+		line-height: 24px;
 		color: #181c1d;
 	}
 
 	.empty-desc {
 		margin-top: 8px;
 		font-size: 14px;
-		line-height: 22px;
+		line-height: 20px;
 		text-align: center;
 		color: #667172;
 	}
 
 	.medicine-card {
-		position: relative;
+		margin-bottom: 16px;
+		padding: 16px;
+		border-radius: 16px;
+		background-color: #ffffff;
+		flex-direction: row;
 	}
 
-	.medicine-top {
-		flex-direction: row;
+	.medicine-card-expired {
+		background-color: rgba(255, 255, 255, 0.8);
+	}
+
+	.medicine-image-wrap {
+		width: 96px;
+		height: 96px;
+		border-radius: 12px;
+		background-color: #ebeeee;
+		justify-content: center;
+		align-items: center;
+		overflow: hidden;
+	}
+
+	.medicine-image {
+		width: 96px;
+		height: 96px;
+		border-radius: 12px;
+	}
+
+	.medicine-image-placeholder {
+		background-color: #ebeeee;
+	}
+
+	.medicine-image-placeholder-text {
+		font-size: 12px;
+		line-height: 16px;
+		color: #8d9899;
+	}
+
+	.medicine-main {
+		flex: 1;
+		margin-left: 16px;
+		padding-top: 4px;
+		padding-bottom: 4px;
 		justify-content: space-between;
 	}
 
+	.medicine-copy {
+		width: 100%;
+	}
+
 	.medicine-name {
-		font-size: 20px;
+		font-size: 18px;
 		font-weight: 700;
+		line-height: 22px;
 		color: #181c1d;
 	}
 
 	.medicine-category {
-		margin-top: 6px;
-		font-size: 13px;
+		margin-top: 4px;
+		font-size: 14px;
+		line-height: 18px;
 		color: #667172;
-	}
-
-	.medicine-image {
-		width: 72px;
-		height: 72px;
-		border-radius: 12px;
-		background-color: #eef3f3;
-	}
-
-	.medicine-image-placeholder {
-		justify-content: center;
-		align-items: center;
-	}
-
-	.medicine-image-text {
-		font-size: 12px;
-		color: #869293;
 	}
 
 	.medicine-meta-row {
 		margin-top: 16px;
 		flex-direction: row;
 		justify-content: space-between;
+		align-items: flex-end;
 	}
 
-	.medicine-meta-right {
+	.medicine-meta-block-right {
 		align-items: flex-end;
 	}
 
 	.medicine-meta-label {
 		font-size: 12px;
-		color: #869293;
+		line-height: 16px;
+		color: #7c8788;
 	}
 
-	.medicine-meta-value {
-		margin-top: 6px;
-		font-size: 15px;
+	.medicine-stock-value {
+		margin-top: 2px;
+		font-size: 16px;
 		font-weight: 600;
-		color: #181c1d;
-	}
-
-	.action-row {
-		margin-top: 16px;
-		flex-direction: row;
-	}
-
-	.action-button {
-		padding-top: 10px;
-		padding-right: 14px;
-		padding-bottom: 10px;
-		padding-left: 14px;
-		border-radius: 12px;
-		background-color: #e7f3f4;
-	}
-
-	.action-button-danger {
-		margin-left: 10px;
-		background-color: #fdecec;
-	}
-
-	.action-button-text {
-		font-size: 13px;
-		font-weight: 600;
+		line-height: 20px;
 		color: #006067;
 	}
 
-	.action-button-danger-text {
-		font-size: 13px;
+	.medicine-stock-value-expired {
+		color: #6e797a;
+	}
+
+	.medicine-expiry-value {
+		margin-top: 2px;
+		font-size: 14px;
+		font-weight: 500;
+		line-height: 18px;
+		color: #181c1d;
+	}
+
+	.medicine-expiry-value-expired {
+		color: #6e797a;
+	}
+
+	.page-bottom-spacer {
+		height: 88px;
+	}
+
+	.action-sheet-mask {
+		position: fixed;
+		left: 0;
+		right: 0;
+		top: 0;
+		bottom: 0;
+		background-color: rgba(0, 0, 0, 0.28);
+		z-index: 39;
+	}
+
+	.action-sheet {
+		position: fixed;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		padding-left: 12px;
+		padding-right: 12px;
+		padding-bottom: 108px;
+		z-index: 40;
+	}
+
+	.action-sheet-panel {
+		padding-top: 12px;
+		padding-right: 12px;
+		padding-bottom: 12px;
+		padding-left: 12px;
+		border-radius: 20px;
+		background-color: #ffffff;
+	}
+
+	.action-sheet-title {
+		padding-top: 8px;
+		padding-bottom: 14px;
+		font-size: 16px;
 		font-weight: 600;
+		line-height: 20px;
+		text-align: center;
+		color: #181c1d;
+	}
+
+	.action-sheet-button {
+		height: 52px;
+		border-radius: 14px;
+		justify-content: center;
+		align-items: center;
+		background-color: #e7f3f4;
+	}
+
+	.action-sheet-button-danger {
+		margin-top: 10px;
+		background-color: #fdecec;
+	}
+
+	.action-sheet-button-text {
+		font-size: 15px;
+		font-weight: 600;
+		line-height: 18px;
+		color: #006067;
+	}
+
+	.action-sheet-button-danger-text {
+		font-size: 15px;
+		font-weight: 600;
+		line-height: 18px;
 		color: #ba1a1a;
+	}
+
+	.action-sheet-cancel {
+		height: 52px;
+		margin-top: 10px;
+		border-radius: 14px;
+		justify-content: center;
+		align-items: center;
+		background-color: #f1f4f4;
+	}
+
+	.action-sheet-cancel-text {
+		font-size: 15px;
+		font-weight: 600;
+		line-height: 18px;
+		color: #4e5a5b;
 	}
 
 	.ai-fab {
 		position: fixed;
-		right: 18px;
+		right: 24px;
 		bottom: 116px;
-		width: 54px;
-		height: 54px;
-		border-radius: 27px;
+		width: 56px;
+		height: 56px;
+		border-radius: 28px;
 		background-color: #006067;
 		justify-content: center;
 		align-items: center;
+		z-index: 20;
 	}
 
 	.ai-fab-icon {
-		font-size: 24px;
-		line-height: 24px;
+		font-size: 28px;
+		line-height: 28px;
 		color: #ffffff;
 	}
 

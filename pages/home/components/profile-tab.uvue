@@ -1,7 +1,7 @@
 <template>
 	<view class="page-flow">
 		<view class="page">
-			<view class="top-bar">
+			<view class="top-bar" :style="topBarStyle()">
 				<text class="top-bar-title">App Template</text>
 			</view>
 
@@ -76,13 +76,19 @@
 
 <script setup lang="uts">
 	const emit = defineEmits(['openMedicineStats', 'todo', 'logout'])
-	defineProps<{
+
+	const props = defineProps<{
 		nickname: string
 		membershipLevel: string
 		activeMedicineCount: number
 		expiredMedicineCount: number
 		contentScrollStyle: string
+		safeTopInset: number
 	}>()
+
+	function topBarStyle() {
+		return 'padding-top:' + props.safeTopInset + 'px;height:' + (props.safeTopInset + 64) + 'px;'
+	}
 </script>
 
 <style>

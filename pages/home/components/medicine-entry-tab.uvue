@@ -1,8 +1,9 @@
 <template>
-	<view class="page-flow">
-		<view class="page">
-			<scroll-view scroll-y direction="vertical" show-scrollbar class="content-scroll" :style="contentScrollStyle">
-				<view class="content">
+		<view class="page-flow">
+			<view class="page">
+				<view class="entry-top-spacer" :style="entryTopSpacerStyle()"></view>
+				<scroll-view scroll-y direction="vertical" show-scrollbar class="content-scroll" :style="contentScrollStyle">
+					<view class="content">
 					<view class="photo-entry-card">
 						<view class="photo-entry-orb photo-entry-orb-top"></view>
 						<view class="photo-entry-orb photo-entry-orb-bottom"></view>
@@ -13,14 +14,6 @@
 								<view class="photo-preview-remove" @click="handleRemoveImage(index)">
 									<text class="photo-preview-remove-text">×</text>
 								</view>
-							</view>
-
-							<view v-if="shouldShowFirstPlaceholder" class="photo-preview-item photo-preview-placeholder">
-								<text class="photo-preview-placeholder-icon material-symbols-outlined">image</text>
-							</view>
-
-							<view v-if="shouldShowSecondPlaceholder" class="photo-preview-item photo-preview-placeholder">
-								<text class="photo-preview-placeholder-icon material-symbols-outlined">image</text>
 							</view>
 
 							<view v-if="uploadedImages.length < 3" class="photo-preview-item photo-preview-add" @click="emit('chooseImage')">
@@ -141,14 +134,11 @@
 		formExpiry: string
 		formQuantity: string
 		contentScrollStyle: string
+		safeTopInset: number
 	}>()
 
-	function shouldShowFirstPlaceholder() {
-		return props.uploadedImages.length < 1
-	}
-
-	function shouldShowSecondPlaceholder() {
-		return props.uploadedImages.length < 2
+	function entryTopSpacerStyle() {
+		return 'height:' + props.safeTopInset + 'px;'
 	}
 
 	function resolveUploadedImageUrl(item : any) {
@@ -203,14 +193,19 @@
 	.page {
 		min-height: 1000px;
 		background-color: #f7fafa;
+		position: relative;
 	}
 
 	.content-scroll {
 		width: 100%;
 	}
 
+	.entry-top-spacer {
+		width: 100%;
+	}
+
 	.content {
-		padding-top: 24px;
+		padding-top: 40px;
 		padding-left: 24px;
 		padding-right: 24px;
 		padding-bottom: 0;
@@ -262,19 +257,6 @@
 		border-radius: 12px;
 		justify-content: center;
 		align-items: center;
-	}
-
-	.photo-preview-placeholder {
-		border-width: 2px;
-		border-style: dashed;
-		border-color: rgba(255, 255, 255, 0.4);
-		background-color: rgba(255, 255, 255, 0.12);
-	}
-
-	.photo-preview-placeholder-icon {
-		font-size: 24px;
-		line-height: 24px;
-		color: rgba(255, 255, 255, 0.72);
 	}
 
 	.photo-preview-add {
@@ -479,7 +461,6 @@
 		border-bottom-color: rgba(189, 201, 202, 0.2);
 		background-color: transparent;
 		font-size: 16px;
-		line-height: 20px;
 		color: #181c1d;
 	}
 
@@ -522,14 +503,14 @@
 	}
 
 	.bottom-action-spacer {
-		height: 112px;
+		height: 100px;
 	}
 
 	.bottom-action-bar {
-		position: absolute;
+		position: fixed;
 		left: 0;
 		right: 0;
-		bottom: 0;
+		bottom: 92px;
 		padding-top: 16px;
 		padding-right: 24px;
 		padding-bottom: 24px;
@@ -538,6 +519,7 @@
 		border-top-style: solid;
 		border-top-color: rgba(189, 201, 202, 0.1);
 		background-color: rgba(255, 255, 255, 0.94);
+		z-index: 20;
 	}
 
 	.save-button {

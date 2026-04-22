@@ -76,6 +76,8 @@ src/app/
 
 10. 字重别写 `800/900`，统一用 `400/500/600/700` 或 `normal/bold`；阴影别默认用 `shadow-*` 一类属性，先确认 uvue 支持。
 
-11. 项目已接入 `Material Symbols Outlined` 本地字体图标；通用图标优先复用现有字体图标，不要默认手动画或临时字符替代。
+11. `line-height` 不要写在 `input` 上；该属性只用于 `text/button/textarea` 一类文本组件。
 
-12. 路由别混用 `switchTab`：非原生 tabBar 页面用 `reLaunch/navigateTo/navigateBack`。
+12. 项目已接入 `Material Symbols Outlined` 本地字体图标；通用图标优先复用现有字体图标，不要默认手动画或临时字符替代。
+
+13. 路由别混用 `switchTab`：非原生 tabBar 页面用 `reLaunch/navigateTo/navigateBack`。
