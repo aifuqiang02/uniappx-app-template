@@ -1,7 +1,7 @@
 {
-	"name": "uniappx-app-template",
-	"appid": "__UNI__UNIAPPXAPPTPL",
-	"description": "uni-app x App template with login, home shell, state management, upload helpers, and multi-page examples.",
+	"name": "常备",
+	"appid": "__UNI__B790880",
+	"description": "一款管理家里常备药品的APP。",
 	"versionName": "1.0.0",
 	"versionCode": "100",
 	"uni-app-x": {},
@@ -44,10 +44,10 @@
 		"distribute": {
 			"modules": {},
 			"icons": {
-				"hdpi": "",
-				"xhdpi": "",
-				"xxhdpi": "",
-				"xxxhdpi": ""
+				"hdpi": "D:/git-projects/ai-company/projects/regular-medicine/src/app/static/icons/android/ic_launcher_hdpi_72x72.png",
+				"xhdpi": "D:/git-projects/ai-company/projects/regular-medicine/src/app/static/icons/android/ic_launcher_xhdpi_96x96.png",
+				"xxhdpi": "D:/git-projects/ai-company/projects/regular-medicine/src/app/static/icons/android/ic_launcher_xxhdpi_144x144.png",
+				"xxxhdpi": "D:/git-projects/ai-company/projects/regular-medicine/src/app/static/icons/android/ic_launcher_round_xxxhdpi_192x192.png"
 			},
 			"splashScreens": {
 				"default": {}

@@ -9,7 +9,7 @@ import {
 	setMedicineEntryUploading
 } from '../../store/medicine-entry-draft-state.uts'
 import { setMedicineListMedicines } from '../../store/medicine-list-state.uts'
-import { setProfileSnapshot } from '../../store/profile-state.uts'
+import { setProfileAvatar, setProfileSnapshot } from '../../store/profile-state.uts'
 
 export function trimText(value : string) {
 	let start = 0
@@ -227,6 +227,23 @@ export async function fetchProfileSnapshotAction() {
 	}
 	setProfileSnapshot(payload)
 	return payload
+}
+
+export async function uploadProfileAvatarAction() {
+	const selected = await chooseImageRaw(1)
+	const tempFilePaths = selected['tempFilePaths'] as string[]
+	if (tempFilePaths.length == 0) {
+		throw new Error('未选择图片')
+	}
+
+	const image = await uploadImage(tempFilePaths[0]) as UTSJSONObject
+	await apiRequest('/users/me', 'PATCH', {
+		avatar: image
+	}, true)
+
+	const url = image['url'] as string | null
+	setProfileAvatar(url != null ? url : '')
+	return image
 }
 
 export async function chooseImageAction() {

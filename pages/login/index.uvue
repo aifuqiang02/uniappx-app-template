@@ -1,9 +1,10 @@
 <template>
-	<view class="page">
+	<view v-if="isBootChecking" class="boot-placeholder"></view>
+	<view v-else class="page">
 		<view class="top-bar" :class="isCodeMode ? '' : 'top-bar-one-tap'">
 			<view class="top-bar-left" @click="handleTopBarClick">
 				<text v-if="isCodeMode" class="back-icon material-symbols-outlined">arrow_back</text>
-				<text class="top-brand">AppKit</text>
+				<text class="top-brand">常备</text>
 			</view>
 			<view v-if="isCodeMode" class="top-bar-right"></view>
 		</view>
@@ -16,8 +17,8 @@
 						<view class="hero-logo-cross-horizontal"></view>
 					</view>
 				</view>
-				<text class="hero-brand">AppKit</text>
-				<text class="hero-subtitle">登录与首页壳模板</text>
+				<text class="hero-brand">常备</text>
+				<text class="hero-subtitle">您的家庭健康管家</text>
 			</view>
 
 			<view class="one-tap-body">
@@ -40,7 +41,7 @@
 					<view class="agreement-box" :class="agreed ? 'agreement-box-active' : ''">
 						<text v-if="agreed" class="agreement-check">√</text>
 					</view>
-					<text class="agreement-text">我已阅读并同意《服务协议》和《隐私政策》，并授权应用获取本机号码。</text>
+					<text class="agreement-text">我已阅读并同意《服务协议》和《隐私政策》，并授权常备获取本机号码。</text>
 				</view>
 			</view>
 		</view>
@@ -101,7 +102,7 @@
 					<view class="agreement-box agreement-box-small" :class="agreed ? 'agreement-box-active' : ''">
 						<text v-if="agreed" class="agreement-check agreement-check-small">√</text>
 					</view>
-					<text class="agreement-text agreement-text-small">我已阅读并同意《应用服务协议》与《隐私政策》，未注册手机号将自动为您创建账号。</text>
+					<text class="agreement-text agreement-text-small">我已阅读并同意《常备服务协议》与《隐私政策》，未注册手机号将自动为您创建常备账号。</text>
 				</view>
 			</view>
 		</view>
@@ -120,7 +121,19 @@
 	const code = ref('')
 	const countdown = ref(0)
 	const sendCodeText = ref('获取验证码')
+	const isBootChecking = ref(true)
 	let countdownTimer = 0
+
+	function handleBootRoute() {
+		const token = getAccessToken()
+		if (token != null && token != '') {
+			uni.reLaunch({
+				url: '/pages/home/index'
+			})
+			return
+		}
+		isBootChecking.value = false
+	}
 
 	function handleTopBarClick() {
 		if (!isCodeMode.value) {
@@ -281,13 +294,10 @@
 		await handleCodeLogin()
 	}
 
+	handleBootRoute()
+
 	onShow(() => {
-		const token = getAccessToken()
-		if (token != null && token != '') {
-			uni.reLaunch({
-				url: '/pages/home/index'
-			})
-		}
+		handleBootRoute()
 	})
 
 	onHide(() => {
@@ -299,6 +309,11 @@
 </script>
 
 <style>
+	.boot-placeholder {
+		min-height: 1000px;
+		background-color: #f7fafa;
+	}
+
 	.page {
 		min-height: 1000px;
 		background-color: #f7fafa;

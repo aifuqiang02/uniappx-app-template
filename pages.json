@@ -1,14 +1,14 @@
 {
 	"pages": [ //pages数组中第一项表示应用启动页，参考：https://doc.dcloud.net.cn/uni-app-x/collocation/pagesjson.html
 		{
-			"path": "pages/login/index",
+			"path": "pages/home/index",
 			"style": {
 				"navigationStyle": "custom",
 				"backgroundColor": "#F7FAFA"
 			}
 		},
 		{
-			"path": "pages/home/index",
+			"path": "pages/login/index",
 			"style": {
 				"navigationStyle": "custom",
 				"backgroundColor": "#F7FAFA"
@@ -17,7 +17,7 @@
 	],
 	"globalStyle": {
 		"navigationBarTextStyle": "black",
-		"navigationBarTitleText": "App Template",
+		"navigationBarTitleText": "常备",
 		"navigationBarBackgroundColor": "#F7FAFA",
 		"backgroundColor": "#F7FAFA"
 	},

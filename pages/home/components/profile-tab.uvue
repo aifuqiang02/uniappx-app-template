@@ -2,7 +2,7 @@
 	<view class="page-flow">
 		<view class="page">
 			<view class="top-bar" :style="topBarStyle()">
-				<text class="top-bar-title">App Template</text>
+				<text class="top-bar-title">常备 EverReady</text>
 			</view>
 
 			<scroll-view scroll-y direction="vertical" show-scrollbar class="content-scroll" :style="contentScrollStyle">
@@ -10,9 +10,12 @@
 					<view class="profile-card">
 						<view class="profile-card-deco"></view>
 						<view class="profile-row">
-							<view class="profile-avatar-shell">
-								<view class="profile-avatar-head"></view>
-								<view class="profile-avatar-body"></view>
+							<view class="profile-avatar-shell" @click="emit('uploadAvatar')">
+								<image v-if="avatarUrl != ''" class="profile-avatar-image" :src="avatarUrl" mode="aspectFill"></image>
+								<view v-else class="profile-avatar-fallback">
+									<view class="profile-avatar-head"></view>
+									<view class="profile-avatar-body"></view>
+								</view>
 							</view>
 
 							<view class="profile-copy">
@@ -75,10 +78,11 @@
 </template>
 
 <script setup lang="uts">
-	const emit = defineEmits(['openMedicineStats', 'todo', 'logout'])
+	const emit = defineEmits(['openMedicineStats', 'uploadAvatar', 'todo', 'logout'])
 
 	const props = defineProps<{
 		nickname: string
+		avatarUrl: string
 		membershipLevel: string
 		activeMedicineCount: number
 		expiredMedicineCount: number
@@ -158,6 +162,18 @@
 		border-width: 4px;
 		border-style: solid;
 		border-color: #ffffff;
+		justify-content: center;
+		align-items: center;
+		overflow: hidden;
+	}
+
+	.profile-avatar-image {
+		width: 80px;
+		height: 80px;
+		border-radius: 40px;
+	}
+
+	.profile-avatar-fallback {
 		justify-content: center;
 		align-items: center;
 	}

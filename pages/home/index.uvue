@@ -38,12 +38,14 @@
 		<ProfileTab
 			v-if="activeTab == 'profile'"
 			:nickname="profileState.nickname"
+			:avatarUrl="profileState.avatarUrl"
 			:membershipLevel="profileState.membershipLevel"
 			:activeMedicineCount="profileState.activeMedicineCount"
 			:expiredMedicineCount="profileState.expiredMedicineCount"
 			:contentScrollStyle="contentScrollStyle"
 			:safeTopInset="safeTopInset"
 			@openMedicineStats="handleProfileStatsRequested"
+			@uploadAvatar="handleProfileAvatarUpload"
 			@todo="handleTodoEvent"
 			@logout="logout"
 		/>
@@ -66,7 +68,9 @@
 		chooseImageAction,
 		removeImageAction,
 		saveMedicineEntryAction,
+		uploadProfileAvatarAction,
 	} from './home-logic.uts'
+	import { getErrorMessage } from '../../lib/api.uts'
 	import {
 		medicineEntryDraftState,
 		resetMedicineEntryDraftState,
@@ -86,6 +90,7 @@
 	const contentScrollStyle = ref('')
 	const entryContentScrollStyle = ref('')
 	const safeTopInset = ref(0)
+	const hasBootRefreshed = ref(false)
 
 	function showTodo(name : string) {
 		uni.showToast({
@@ -260,6 +265,21 @@
 		refreshMedicineList()
 	}
 
+	async function handleProfileAvatarUpload() {
+		try {
+			await uploadProfileAvatarAction()
+			uni.showToast({
+				title: '头像已更新',
+				icon: 'success'
+			})
+		} catch (error) {
+			uni.showToast({
+				title: getErrorMessage(error, '头像上传失败'),
+				icon: 'none'
+			})
+		}
+	}
+
 	function logout() {
 		clearTokens()
 		resetProfileState()
@@ -286,10 +306,21 @@
 			return
 		}
 
-		if (medicineListState.medicines.length == 0) {
+		if (!hasBootRefreshed.value) {
+			hasBootRefreshed.value = true
+			if (medicineListState.medicines.length == 0) {
+				refreshMedicineList()
+			}
+			if (profileState.nickname == '常备用户' && profileState.avatarUrl == '' && profileState.activeMedicineCount == 0 && profileState.expiredMedicineCount == 0) {
+				refreshProfileTab()
+			}
+			return
+		}
+
+		if (activeTab.value == 'medicine-box') {
 			refreshMedicineList()
 		}
-		if (activeTab.value == 'profile' && profileState.nickname == '模板用户') {
+		if (activeTab.value == 'profile') {
 			refreshProfileTab()
 		}
 	})

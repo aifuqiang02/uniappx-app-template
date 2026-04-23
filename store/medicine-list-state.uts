@@ -1,5 +1,56 @@
 import { reactive } from 'vue'
 
+const MEDICINE_LIST_KEYWORD_KEY = 'medicine_list_keyword'
+const MEDICINE_LIST_STATUS_KEY = 'medicine_list_status'
+const MEDICINE_LIST_ITEMS_KEY = 'medicine_list_items'
+
+function readStorageText(key : string) {
+	const raw = uni.getStorageSync(key)
+	if (raw == null) {
+		return ''
+	}
+	const text = '' + raw
+	if (text == 'null' || text == 'undefined') {
+		return ''
+	}
+	return text
+}
+
+function readStoredMedicines() {
+	const raw = readStorageText(MEDICINE_LIST_ITEMS_KEY)
+	if (raw == '') {
+		return [] as any[]
+	}
+
+	try {
+		const parsedAny = JSON.parse(raw) as any
+		if (!Array.isArray(parsedAny)) {
+			return [] as any[]
+		}
+		const parsed = parsedAny as any[]
+
+		const list = [] as any[]
+		for (let i = 0; i < parsed.length; i++) {
+			list.push(parsed[i])
+		}
+		return list
+	} catch (error) {
+		return [] as any[]
+	}
+}
+
+function persistMedicines(value : any[]) {
+	uni.setStorageSync(MEDICINE_LIST_ITEMS_KEY, JSON.stringify(value))
+}
+
+function readStoredStatus() {
+	const value = readStorageText(MEDICINE_LIST_STATUS_KEY)
+	if (value == 'ALL' || value == 'ACTIVE' || value == 'EXPIRED') {
+		return value
+	}
+	return 'ALL'
+}
+
 export type MedicineListState = {
 	keyword: string
 	selectedStatus: string
@@ -7,25 +58,31 @@ export type MedicineListState = {
 }
 
 export const medicineListState = reactive({
-	keyword: '',
-	selectedStatus: 'ALL',
-	medicines: [] as any[],
+	keyword: readStorageText(MEDICINE_LIST_KEYWORD_KEY),
+	selectedStatus: readStoredStatus(),
+	medicines: readStoredMedicines(),
 } as MedicineListState)
 
 export function setMedicineListKeyword(value : string) {
 	medicineListState.keyword = value
+	uni.setStorageSync(MEDICINE_LIST_KEYWORD_KEY, value)
 }
 
 export function setMedicineListSelectedStatus(value : string) {
 	medicineListState.selectedStatus = value
+	uni.setStorageSync(MEDICINE_LIST_STATUS_KEY, value)
 }
 
 export function setMedicineListMedicines(value : any[]) {
 	medicineListState.medicines = value
+	persistMedicines(value)
 }
 
 export function resetMedicineListState() {
 	medicineListState.keyword = ''
 	medicineListState.selectedStatus = 'ALL'
 	medicineListState.medicines = []
+	uni.removeStorageSync(MEDICINE_LIST_KEYWORD_KEY)
+	uni.removeStorageSync(MEDICINE_LIST_STATUS_KEY)
+	uni.removeStorageSync(MEDICINE_LIST_ITEMS_KEY)
 }

@@ -1,33 +1,194 @@
 import { reactive } from 'vue'
 
+const PROFILE_CACHE_KEY = 'profile_snapshot_cache'
+
+function readStorageText(key : string) {
+	const raw = uni.getStorageSync(key)
+	if (raw == null) {
+		return ''
+	}
+	const text = '' + raw
+	if (text == 'null' || text == 'undefined') {
+		return ''
+	}
+	return text
+}
+
+function readStoredAvatarUrl() {
+	return readStorageText('profile_avatar_url')
+}
+
+function persistAvatarUrl(avatarUrl : string) {
+	if (avatarUrl != '') {
+		uni.setStorageSync('profile_avatar_url', avatarUrl)
+		return
+	}
+	uni.removeStorageSync('profile_avatar_url')
+}
+
+function toSafeNumber(value : any) {
+	if (value == null) {
+		return 0
+	}
+	if (typeof value == 'number') {
+		return value as number
+	}
+	if (typeof value == 'string') {
+		const text = value as string
+		let total = 0
+		let hasDigit = false
+		for (let i = 0; i < text.length; i++) {
+			const char = text.substring(i, i + 1)
+			if (char < '0' || char > '9') {
+				break
+			}
+			hasDigit = true
+			total = total * 10 + (char.toInt() - '0'.toInt())
+		}
+		if (hasDigit) {
+			return total
+		}
+	}
+	return 0
+}
+
+function readProfileCache() {
+	const raw = readStorageText(PROFILE_CACHE_KEY)
+	if (raw == '') {
+		return null
+	}
+
+	try {
+		const parsed = JSON.parse(raw) as UTSJSONObject
+		const activeRaw = parsed['activeMedicineCount']
+		const expiredRaw = parsed['expiredMedicineCount']
+		return {
+			nickname: parsed['nickname'] as string | null,
+			avatarUrl: parsed['avatarUrl'] as string | null,
+			membershipLevel: parsed['membershipLevel'] as string | null,
+			activeMedicineCount: toSafeNumber(activeRaw != null ? activeRaw : 0),
+			expiredMedicineCount: toSafeNumber(expiredRaw != null ? expiredRaw : 0),
+		} as UTSJSONObject
+	} catch (error) {
+		return null
+	}
+}
+
+function persistProfileCache() {
+	const cache : UTSJSONObject = {
+		nickname: profileState.nickname,
+		avatarUrl: profileState.avatarUrl,
+		membershipLevel: profileState.membershipLevel,
+		activeMedicineCount: profileState.activeMedicineCount,
+		expiredMedicineCount: profileState.expiredMedicineCount,
+	}
+	uni.setStorageSync(PROFILE_CACHE_KEY, JSON.stringify(cache))
+}
+
+function buildInitialProfileState() {
+	const cached = readProfileCache()
+	if (cached == null) {
+		return {
+			nickname: '常备用户',
+			avatarUrl: readStoredAvatarUrl(),
+			membershipLevel: '标准会员',
+			activeMedicineCount: 0,
+			expiredMedicineCount: 0,
+		} as ProfileState
+	}
+
+	const nickname = cached['nickname'] as string | null
+	const avatarUrl = cached['avatarUrl'] as string | null
+	const membershipLevel = cached['membershipLevel'] as string | null
+	const activeMedicineCount = cached['activeMedicineCount'] as number
+	const expiredMedicineCount = cached['expiredMedicineCount'] as number
+
+	return {
+		nickname: nickname != null && nickname != '' ? nickname : '常备用户',
+		avatarUrl: avatarUrl != null && avatarUrl != '' ? avatarUrl : readStoredAvatarUrl(),
+		membershipLevel: membershipLevel != null && membershipLevel != '' ? membershipLevel : '标准会员',
+		activeMedicineCount,
+		expiredMedicineCount,
+	} as ProfileState
+}
+
 export type ProfileState = {
 	nickname: string
+	avatarUrl: string
 	membershipLevel: string
 	activeMedicineCount: number
 	expiredMedicineCount: number
 }
 
+const initialProfileState = buildInitialProfileState()
+
 export const profileState = reactive({
-	nickname: '模板用户',
-	membershipLevel: '标准会员',
-	activeMedicineCount: 0,
-	expiredMedicineCount: 0,
+	nickname: initialProfileState.nickname,
+	avatarUrl: initialProfileState.avatarUrl,
+	membershipLevel: initialProfileState.membershipLevel,
+	activeMedicineCount: initialProfileState.activeMedicineCount,
+	expiredMedicineCount: initialProfileState.expiredMedicineCount,
 } as ProfileState)
+
+function parseAvatarUrl(user : UTSJSONObject) {
+	const rawAvatar = user['avatar']
+	if (rawAvatar == null) {
+		return ''
+	}
+
+	const avatarObj = rawAvatar as UTSJSONObject
+	const objectUrl = avatarObj['url'] as string | null
+	if (objectUrl != null && objectUrl != '') {
+		return objectUrl
+	}
+
+	const avatarText = rawAvatar as string | null
+	if (avatarText == null || avatarText == '') {
+		return ''
+	}
+
+	if (avatarText.startsWith('http://') || avatarText.startsWith('https://')) {
+		return avatarText
+	}
+
+	try {
+		const parsed = JSON.parse(avatarText) as UTSJSONObject
+		const parsedUrl = parsed['url'] as string | null
+		return parsedUrl != null ? parsedUrl : ''
+	} catch (error) {
+		return ''
+	}
+}
 
 export function setProfileSnapshot(payload : UTSJSONObject) {
 	const user = payload['user'] as UTSJSONObject
 	const activeMedicineCount = payload['activeMedicineCount'] as number
 	const expiredMedicineCount = payload['expiredMedicineCount'] as number
 
-	profileState.nickname = user['nickname'] != null && user['nickname'] != '' ? user['nickname'] as string : '模板用户'
+	profileState.nickname = user['nickname'] != null && user['nickname'] != '' ? user['nickname'] as string : '常备用户'
+	const parsedAvatarUrl = parseAvatarUrl(user)
+	if (parsedAvatarUrl != '') {
+		profileState.avatarUrl = parsedAvatarUrl
+		persistAvatarUrl(parsedAvatarUrl)
+	}
 	profileState.membershipLevel = user['membershipLevel'] != null && user['membershipLevel'] != '' ? user['membershipLevel'] as string : '标准会员'
 	profileState.activeMedicineCount = activeMedicineCount
 	profileState.expiredMedicineCount = expiredMedicineCount
+	persistProfileCache()
+}
+
+export function setProfileAvatar(avatarUrl : string) {
+	profileState.avatarUrl = avatarUrl
+	persistAvatarUrl(avatarUrl)
+	persistProfileCache()
 }
 
 export function resetProfileState() {
-	profileState.nickname = '模板用户'
+	profileState.nickname = '常备用户'
+	profileState.avatarUrl = ''
+	persistAvatarUrl('')
 	profileState.membershipLevel = '标准会员'
 	profileState.activeMedicineCount = 0
 	profileState.expiredMedicineCount = 0
+	uni.removeStorageSync(PROFILE_CACHE_KEY)
 }

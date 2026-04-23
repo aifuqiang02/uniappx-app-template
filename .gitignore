@@ -1,11 +1,6 @@
 node_modules/
 unpackage/
 .hbuilderx/
-.vscode/
-.idea/
-.cursor/
-.cool/
 .DS_Store
 .env.local
 .env.*.local
-*.log
