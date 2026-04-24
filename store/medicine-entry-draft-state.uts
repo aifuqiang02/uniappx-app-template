@@ -5,10 +5,17 @@ export type MedicineEntryDraftState = {
 	uploadedImages: any[]
 	pendingDeleteObjectKeys: string[]
 	isUploading: boolean
+	aiStage: string
+	aiTaskId: string
+	aiErrorMessage: string
+	voiceStage: string
+	voiceErrorMessage: string
+	voiceTranscript: string
 	formName: string
 	formInstructions: string
 	formExpiry: string
 	formQuantity: string
+	formQuantityUnit: string
 }
 
 export const medicineEntryDraftState = reactive({
@@ -16,10 +23,17 @@ export const medicineEntryDraftState = reactive({
 	uploadedImages: [] as any[],
 	pendingDeleteObjectKeys: [] as string[],
 	isUploading: false,
+	aiStage: 'idle',
+	aiTaskId: '',
+	aiErrorMessage: '',
+	voiceStage: 'idle',
+	voiceErrorMessage: '',
+	voiceTranscript: '',
 	formName: '',
 	formInstructions: '',
 	formExpiry: '',
 	formQuantity: '',
+	formQuantityUnit: '粒',
 } as MedicineEntryDraftState)
 
 export function resetMedicineEntryDraftState() {
@@ -31,6 +45,13 @@ export function resetMedicineEntryDraftState() {
 	medicineEntryDraftState.uploadedImages = []
 	medicineEntryDraftState.pendingDeleteObjectKeys = []
 	medicineEntryDraftState.isUploading = false
+	medicineEntryDraftState.aiStage = 'idle'
+	medicineEntryDraftState.aiTaskId = ''
+	medicineEntryDraftState.aiErrorMessage = ''
+	medicineEntryDraftState.voiceStage = 'idle'
+	medicineEntryDraftState.voiceErrorMessage = ''
+	medicineEntryDraftState.voiceTranscript = ''
+	medicineEntryDraftState.formQuantityUnit = '粒'
 }
 
 export function applyMedicineEntryDraft(draft : UTSJSONObject) {
@@ -39,8 +60,15 @@ export function applyMedicineEntryDraft(draft : UTSJSONObject) {
 	medicineEntryDraftState.formInstructions = draft['formInstructions'] as string
 	medicineEntryDraftState.formExpiry = draft['formExpiry'] as string
 	medicineEntryDraftState.formQuantity = draft['formQuantity'] as string
+	medicineEntryDraftState.formQuantityUnit = draft['formQuantityUnit'] as string
 	medicineEntryDraftState.uploadedImages = draft['uploadedImages'] as any[]
 	medicineEntryDraftState.pendingDeleteObjectKeys = []
+	medicineEntryDraftState.aiStage = 'idle'
+	medicineEntryDraftState.aiTaskId = ''
+	medicineEntryDraftState.aiErrorMessage = ''
+	medicineEntryDraftState.voiceStage = 'idle'
+	medicineEntryDraftState.voiceErrorMessage = ''
+	medicineEntryDraftState.voiceTranscript = ''
 }
 
 export function setMedicineEntryFormName(value : string) {
@@ -59,8 +87,36 @@ export function setMedicineEntryFormQuantity(value : string) {
 	medicineEntryDraftState.formQuantity = value
 }
 
+export function setMedicineEntryFormQuantityUnit(value : string) {
+	medicineEntryDraftState.formQuantityUnit = value
+}
+
 export function setMedicineEntryUploading(value : boolean) {
 	medicineEntryDraftState.isUploading = value
+}
+
+export function setMedicineEntryAiStage(value : string) {
+	medicineEntryDraftState.aiStage = value
+}
+
+export function setMedicineEntryAiTaskId(value : string) {
+	medicineEntryDraftState.aiTaskId = value
+}
+
+export function setMedicineEntryAiErrorMessage(value : string) {
+	medicineEntryDraftState.aiErrorMessage = value
+}
+
+export function setMedicineEntryVoiceStage(value : string) {
+	medicineEntryDraftState.voiceStage = value
+}
+
+export function setMedicineEntryVoiceErrorMessage(value : string) {
+	medicineEntryDraftState.voiceErrorMessage = value
+}
+
+export function setMedicineEntryVoiceTranscript(value : string) {
+	medicineEntryDraftState.voiceTranscript = value
 }
 
 export function setMedicineEntryUploadedImages(images : any[]) {

@@ -1,0 +1,6 @@
+import 'AudioToolbox';
+
+export function vibrate(duration: number = 150) {
+	AudioToolbox.AudioServicesPlayAlertSound(AudioToolbox.kSystemSoundID_Vibrate)
+}
+

@@ -1,0 +1,6 @@
+{
+  "name": "univerify-phone",
+  "extensions": {
+    "uni-cloud-verify": {}
+  }
+}

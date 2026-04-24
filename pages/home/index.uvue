@@ -1,53 +1,69 @@
 <template>
 	<view class="page-shell">
 		<MedicineListTab
-			v-if="activeTab == 'medicine-box'"
-			:keyword="medicineListState.keyword"
-			:selectedStatus="medicineListState.selectedStatus"
-			:medicines="medicineListState.medicines"
-			:contentScrollStyle="contentScrollStyle"
-			:safeTopInset="safeTopInset"
-			@update:keyword="handleKeywordChange"
-			@search="refreshMedicineList"
-			@changeStatus="changeStatus"
-			@edit="handleMedicineEditRequested"
-			@delete="handleMedicineDeleted"
-			@ai="handleAiTodo"
+		v-if="activeTab == 'medicine-box'"
+		:keyword="medicineListState.keyword"
+		:selectedStatus="medicineListState.selectedStatus"
+		:medicines="medicineListState.medicines"
+		:voiceSearchTranscript="voiceSearchTranscript"
+		:voiceSearchActive="voiceSearchActive"
+		:voiceSearchStage="voiceSearchStage"
+		:voiceSearchStatusText="voiceSearchStatusText"
+		:contentScrollStyle="contentScrollStyle"
+		:safeTopInset="safeTopInset"
+		@update:keyword="handleKeywordChange"
+		@search="refreshMedicineList"
+		@changeStatus="changeStatus"
+		@edit="handleMedicineEditRequested"
+		@delete="handleMedicineDeleted"
+		@startAiVoice="startMedicineSearchVoice"
+		@stopAiVoice="stopMedicineSearchVoice"
+		@clearAiVoice="clearMedicineSearchVoice"
 		/>
 
 		<MedicineEntryTab
-			v-if="activeTab == 'entry'"
-			:editingMedicineId="medicineEntryDraftState.editingMedicineId"
-			:uploadedImages="medicineEntryDraftState.uploadedImages"
-			:formName="medicineEntryDraftState.formName"
-			:formInstructions="medicineEntryDraftState.formInstructions"
-			:formExpiry="medicineEntryDraftState.formExpiry"
-			:formQuantity="medicineEntryDraftState.formQuantity"
-			:contentScrollStyle="entryContentScrollStyle"
-			:safeTopInset="safeTopInset"
+		v-if="activeTab == 'entry'"
+		:editingMedicineId="medicineEntryDraftState.editingMedicineId"
+		:uploadedImages="medicineEntryDraftState.uploadedImages"
+		:formName="medicineEntryDraftState.formName"
+		:formInstructions="medicineEntryDraftState.formInstructions"
+		:formExpiry="medicineEntryDraftState.formExpiry"
+		:formQuantity="medicineEntryDraftState.formQuantity"
+		:formQuantityUnit="medicineEntryDraftState.formQuantityUnit"
+		:aiStage="medicineEntryDraftState.aiStage"
+		:aiErrorMessage="medicineEntryDraftState.aiErrorMessage"
+		:voiceStage="medicineEntryDraftState.voiceStage"
+		:voiceErrorMessage="medicineEntryDraftState.voiceErrorMessage"
+		:voiceTranscript="medicineEntryDraftState.voiceTranscript"
+		:contentScrollStyle="entryContentScrollStyle"
+		:safeTopInset="safeTopInset"
 			@todo="handleTodoEvent"
 			@chooseImage="chooseImage"
-			@removeImage="removeImage"
-			@save="handleEntrySubmitted"
-			@update:formName="handleFormNameChange"
-			@update:formInstructions="handleFormInstructionsChange"
-			@update:formExpiry="handleFormExpiryChange"
-			@update:formQuantity="handleFormQuantityChange"
+			@retryAiRecognition="retryAiRecognition"
+			@startVoiceRecord="startVoiceRecord"
+			@stopVoiceRecord="stopVoiceRecord"
+		@removeImage="removeImage"
+		@save="handleEntrySubmitted"
+		@update:formName="handleFormNameChange"
+		@update:formInstructions="handleFormInstructionsChange"
+		@update:formExpiry="handleFormExpiryChange"
+		@update:formQuantity="handleFormQuantityChange"
+		@update:formQuantityUnit="handleFormQuantityUnitChange"
 		/>
 
 		<ProfileTab
-			v-if="activeTab == 'profile'"
-			:nickname="profileState.nickname"
-			:avatarUrl="profileState.avatarUrl"
-			:membershipLevel="profileState.membershipLevel"
-			:activeMedicineCount="profileState.activeMedicineCount"
-			:expiredMedicineCount="profileState.expiredMedicineCount"
-			:contentScrollStyle="contentScrollStyle"
-			:safeTopInset="safeTopInset"
-			@openMedicineStats="handleProfileStatsRequested"
-			@uploadAvatar="handleProfileAvatarUpload"
-			@todo="handleTodoEvent"
-			@logout="logout"
+		v-if="activeTab == 'profile'"
+		:nickname="profileState.nickname"
+		:avatarUrl="profileState.avatarUrl"
+		:membershipLevel="profileState.membershipLevel"
+		:activeMedicineCount="profileState.activeMedicineCount"
+		:expiredMedicineCount="profileState.expiredMedicineCount"
+		:contentScrollStyle="contentScrollStyle"
+		:safeTopInset="safeTopInset"
+		@openMedicineStats="handleProfileStatsRequested"
+		@uploadAvatar="handleProfileAvatarUpload"
+		@todo="handleTodoEvent"
+		@logout="logout"
 		/>
 
 		<CustomTabbar :activeTab="activeTab" @change="changeTab" />
@@ -55,34 +71,41 @@
 </template>
 
 <script setup lang="uts">
-	import { onShow } from '@dcloudio/uni-app'
 	import { ref } from 'vue'
 	import { clearTokens, getAccessToken } from '../../lib/auth.uts'
 	import { medicineListState, setMedicineListKeyword, setMedicineListMedicines, setMedicineListSelectedStatus } from '../../store/medicine-list-state.uts'
 	import { profileState, resetProfileState } from '../../store/profile-state.uts'
 	import {
-		deleteMedicineAction,
-		editMedicineAction,
-		fetchMedicineListAction,
-		fetchProfileSnapshotAction,
+	deleteMedicineAction,
+	editMedicineAction,
+	fetchMedicineListAction,
+	fetchProfileSnapshotAction,
+	cleanupHomeAudioResources,
 		chooseImageAction,
+		retryAiRecognitionAction,
 		removeImageAction,
-		saveMedicineEntryAction,
-		uploadProfileAvatarAction,
+	saveMedicineEntryAction,
+	searchMedicinesByVoiceAction,
+	startMedicineSearchVoiceAction,
+	startVoiceRecordAction,
+	stopVoiceRecordAction,
+	uploadProfileAvatarAction,
 	} from './home-logic.uts'
 	import { getErrorMessage } from '../../lib/api.uts'
 	import {
-		medicineEntryDraftState,
-		resetMedicineEntryDraftState,
-		setMedicineEntryFormExpiry,
-		setMedicineEntryFormInstructions,
-		setMedicineEntryFormName,
-		setMedicineEntryFormQuantity,
+	medicineEntryDraftState,
+	resetMedicineEntryDraftState,
+	setMedicineEntryFormExpiry,
+	setMedicineEntryFormInstructions,
+	setMedicineEntryFormName,
+	setMedicineEntryFormQuantity,
+	setMedicineEntryFormQuantityUnit,
 	} from '../../store/medicine-entry-draft-state.uts'
 	import CustomTabbar from './components/custom-tabbar.uvue'
 	import MedicineListTab from './components/medicine-list-tab.uvue'
 	import MedicineEntryTab from './components/medicine-entry-tab.uvue'
 	import ProfileTab from './components/profile-tab.uvue'
+
 
 	type TabKey = 'medicine-box' | 'entry' | 'profile'
 
@@ -91,6 +114,10 @@
 	const entryContentScrollStyle = ref('')
 	const safeTopInset = ref(0)
 	const hasBootRefreshed = ref(false)
+	const voiceSearchTranscript = ref('')
+	const voiceSearchActive = ref(false)
+	const voiceSearchStage = ref('idle')
+	const voiceSearchStatusText = ref('')
 
 	function showTodo(name : string) {
 		uni.showToast({
@@ -104,11 +131,13 @@
 	}
 
 	function handleTodoEvent(name : string) {
+		if (name == '关于我们&联系') {
+			uni.navigateTo({
+				url: '/pages/about/index'
+			})
+			return
+		}
 		showTodo(name)
-	}
-
-	function handleAiTodo() {
-		showTodo('AI 对话')
 	}
 
 	function handleFormNameChange(value : string) {
@@ -125,6 +154,10 @@
 
 	function handleFormQuantityChange(value : string) {
 		setMedicineEntryFormQuantity(value)
+	}
+
+	function handleFormQuantityUnitChange(value : string) {
+		setMedicineEntryFormQuantityUnit(value)
 	}
 
 	function updateContentScrollStyle() {
@@ -158,9 +191,9 @@
 		} catch (error) {
 			setMedicineListMedicines([])
 			uni.showToast({
-				title: '加载失败',
-				icon: 'none'
-			})
+					title: '加载失败',
+					icon: 'none'
+				})
 		}
 	}
 
@@ -169,15 +202,19 @@
 			await fetchProfileSnapshotAction()
 		} catch (error) {
 			uni.showToast({
-				title: '加载失败',
-				icon: 'none'
-			})
+					title: '加载失败',
+					icon: 'none'
+				})
 		}
 	}
 
 	function changeTab(tab : TabKey) {
 		activeTab.value = tab
 		if (tab == 'medicine-box') {
+			voiceSearchTranscript.value = ''
+			voiceSearchActive.value = false
+			voiceSearchStage.value = 'idle'
+			voiceSearchStatusText.value = ''
 			refreshMedicineList()
 		}
 		if (tab == 'profile') {
@@ -187,7 +224,88 @@
 
 	function changeStatus(status : string) {
 		setMedicineListSelectedStatus(status)
+		voiceSearchTranscript.value = ''
+		voiceSearchActive.value = false
+		voiceSearchStage.value = 'idle'
+		voiceSearchStatusText.value = ''
 		refreshMedicineList()
+	}
+
+	function clearMedicineSearchVoiceState() {
+		voiceSearchTranscript.value = ''
+		voiceSearchActive.value = false
+		voiceSearchStage.value = 'idle'
+		voiceSearchStatusText.value = ''
+	}
+
+	async function clearMedicineSearchVoice() {
+		clearMedicineSearchVoiceState()
+		await refreshMedicineList()
+	}
+
+	function startMedicineSearchVoice() {
+		const started = startMedicineSearchVoiceAction()
+		if (!started) {
+			uni.showToast({
+				title: '录音已在进行中',
+				icon: 'none'
+			})
+			return
+		}
+		voiceSearchActive.value = true
+		voiceSearchTranscript.value = ''
+		voiceSearchStage.value = 'recording'
+		voiceSearchStatusText.value = '正在录音，松开发送...'
+	}
+
+	async function stopMedicineSearchVoice() {
+		if (!voiceSearchActive.value) {
+			return
+		}
+		voiceSearchActive.value = false
+		voiceSearchStage.value = 'parsing'
+		voiceSearchStatusText.value = '正在识别语音...'
+		try {
+			await fetchMedicineListAction(medicineListState.keyword, medicineListState.selectedStatus)
+			voiceSearchStage.value = 'matching'
+			voiceSearchStatusText.value = '正在匹配药品...'
+			const result = await searchMedicinesByVoiceAction(medicineListState.selectedStatus)
+			const success = result['success'] as boolean
+			if (!success) {
+				const message = result['message'] as string | null
+				voiceSearchStage.value = 'failed'
+				voiceSearchStatusText.value = message != null && message != '' ? message : '语音筛药失败'
+				if (message != null && message != '') {
+					uni.showToast({
+						title: message,
+						icon: 'none'
+					})
+				}
+				return
+			}
+
+			voiceSearchTranscript.value = result['transcript'] as string
+			const items = result['items'] as any[] | null
+			setMedicineListMedicines(items != null ? items : [] as any[])
+			const medicineIds = result['medicineIds'] as string[] | null
+			voiceSearchStage.value = 'ready'
+			if (medicineIds == null || medicineIds.length == 0) {
+				voiceSearchStatusText.value = '未找到匹配药品，可清除后重试'
+				uni.showToast({
+					title: '未找到匹配药品',
+					icon: 'none'
+				})
+				return
+			}
+			voiceSearchStatusText.value = '已完成语音筛药，可清除后恢复全部列表'
+		} catch (error) {
+			voiceSearchStage.value = 'failed'
+			voiceSearchStatusText.value = getErrorMessage(error, '语音筛药失败')
+			uni.showToast({
+				title: getErrorMessage(error, '语音筛药失败'),
+				icon: 'none'
+			})
+		}
 	}
 
 	function resetEntryForm() {
@@ -196,23 +314,25 @@
 
 	function handleMedicineEditRequested(draft : any) {
 		editMedicineAction(draft as UTSJSONObject)
-		changeTab('entry')
+		uni.navigateTo({
+			url: '/pages/medicine-edit/index'
+		})
 	}
 
 	async function handleMedicineDeleted(id : string) {
 		try {
 			await deleteMedicineAction(id)
 			uni.showToast({
-				title: '药品已删除',
-				icon: 'success'
-			})
+					title: '药品已删除',
+					icon: 'success'
+				})
 			refreshMedicineList()
 			refreshProfileTab()
 		} catch (error) {
 			uni.showToast({
-				title: '删除失败',
-				icon: 'none'
-			})
+					title: '删除失败',
+					icon: 'none'
+				})
 		}
 	}
 
@@ -220,9 +340,33 @@
 		const errorMessage = await chooseImageAction()
 		if (errorMessage != null && errorMessage != '') {
 			uni.showToast({
+					title: errorMessage,
+					icon: 'none'
+				})
+		}
+	}
+
+	async function retryAiRecognition() {
+		const errorMessage = await retryAiRecognitionAction()
+		if (errorMessage != null && errorMessage != '') {
+			uni.showToast({
 				title: errorMessage,
 				icon: 'none'
 			})
+		}
+	}
+
+	function startVoiceRecord() {
+		startVoiceRecordAction()
+	}
+
+	async function stopVoiceRecord() {
+		const errorMessage = await stopVoiceRecordAction()
+		if (errorMessage != null && errorMessage != '') {
+			uni.showToast({
+					title: errorMessage,
+					icon: 'none'
+				})
 		}
 	}
 
@@ -236,16 +380,16 @@
 			const success = result['success'] as boolean
 			if (!success) {
 				uni.showToast({
-					title: result['message'] as string,
-					icon: 'none'
-				})
+						title: result['message'] as string,
+						icon: 'none'
+					})
 				return
 			}
 			const updated = result['updated'] as boolean
 			uni.showToast({
-				title: updated ? '药品已更新' : '药品已保存',
-				icon: 'success'
-			})
+					title: updated ? '药品已更新' : '药品已保存',
+					icon: 'success'
+				})
 
 			resetEntryForm()
 			changeTab('medicine-box')
@@ -253,9 +397,9 @@
 			refreshProfileTab()
 		} catch (error) {
 			uni.showToast({
-				title: '保存失败',
-				icon: 'none'
-			})
+					title: '保存失败',
+					icon: 'none'
+				})
 		}
 	}
 
@@ -269,14 +413,14 @@
 		try {
 			await uploadProfileAvatarAction()
 			uni.showToast({
-				title: '头像已更新',
-				icon: 'success'
-			})
+					title: '头像已更新',
+					icon: 'success'
+				})
 		} catch (error) {
 			uni.showToast({
-				title: getErrorMessage(error, '头像上传失败'),
-				icon: 'none'
-			})
+					title: getErrorMessage(error, '头像上传失败'),
+					icon: 'none'
+				})
 		}
 	}
 
@@ -284,46 +428,54 @@
 		clearTokens()
 		resetProfileState()
 		uni.reLaunch({
-			url: '/pages/login/index'
-		})
+				url: '/pages/login/index'
+			})
 	}
 
 	onShow(() => {
-		updateContentScrollStyle()
-		const token = getAccessToken()
-		if (token == null || token == '') {
-			uni.reLaunch({
-				url: '/pages/login/index'
-			})
-			return
-		}
+			updateContentScrollStyle()
+			const token = getAccessToken()
+			if (token == null || token == '') {
+				uni.reLaunch({
+						url: '/pages/login/index'
+					})
+				return
+			}
 
-		const medicineChanged = uni.getStorageSync('medicine_changed')
-		if (medicineChanged == '1') {
-			uni.removeStorageSync('medicine_changed')
-			refreshMedicineList()
-			refreshProfileTab()
-			return
-		}
+			const medicineChanged = uni.getStorageSync('medicine_changed')
+			if (medicineChanged == '1') {
+				uni.removeStorageSync('medicine_changed')
+				refreshMedicineList()
+				refreshProfileTab()
+				return
+			}
 
-		if (!hasBootRefreshed.value) {
-			hasBootRefreshed.value = true
-			if (medicineListState.medicines.length == 0) {
+			if (!hasBootRefreshed.value) {
+				hasBootRefreshed.value = true
+				if (medicineListState.medicines.length == 0) {
+					refreshMedicineList()
+				}
+				if (profileState.nickname == '常备用户' && profileState.avatarUrl == '' && profileState.activeMedicineCount == 0 && profileState.expiredMedicineCount == 0) {
+					refreshProfileTab()
+				}
+				return
+			}
+
+			if (activeTab.value == 'medicine-box') {
 				refreshMedicineList()
 			}
-			if (profileState.nickname == '常备用户' && profileState.avatarUrl == '' && profileState.activeMedicineCount == 0 && profileState.expiredMedicineCount == 0) {
+			if (activeTab.value == 'profile') {
 				refreshProfileTab()
 			}
-			return
-		}
+		})
 
-		if (activeTab.value == 'medicine-box') {
-			refreshMedicineList()
-		}
-		if (activeTab.value == 'profile') {
-			refreshProfileTab()
-		}
-	})
+	onHide(() => {
+			cleanupHomeAudioResources()
+		})
+
+	onUnload(() => {
+			cleanupHomeAudioResources()
+		})
 </script>
 
 <style>

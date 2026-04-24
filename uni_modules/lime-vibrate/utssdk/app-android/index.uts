@@ -1,0 +1,42 @@
+import Vibrator from "android.os.Vibrator";
+import VibratorManager from "android.os.VibratorManager";
+import VibrationEffect from "android.os.VibrationEffect";
+import Context from "android.content.Context";
+import Build from "android.os.Build";
+
+
+export function vibrate(duration: number = 150) {
+    try {
+        const context = UTSAndroid.getAppContext() as Context;
+        let vibrator: Vibrator | null = null;
+
+        // 获取 Vibrator
+        if (Build.VERSION.SDK_INT >= 31) {
+            const vibratorManager = context.getSystemService(
+                Context.VIBRATOR_MANAGER_SERVICE
+            ) as VibratorManager;
+            vibrator = vibratorManager.getDefaultVibrator();
+        } else {
+            // 传统方式获取 Vibrator
+			@Suppress("DEPRECATION")
+            vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator;
+        }
+
+        // 检查振动器是否可用
+        if (vibrator != null && vibrator.hasVibrator()) {
+            if (Build.VERSION.SDK_INT >= 26) {
+                const effect = VibrationEffect.createOneShot(
+                    Math.max(0, duration).toLong(), // 确保非负数
+                    VibrationEffect.DEFAULT_AMPLITUDE
+                );
+                vibrator.vibrate(effect);
+            } else {
+                // 传统振动方式
+				@Suppress("DEPRECATION")
+                vibrator.vibrate(Math.max(0, duration).toLong());
+            }
+        }
+    } catch (e) {
+        console.error("lime-vibrate 震动失败:", e);
+    }
+}

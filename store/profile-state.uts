@@ -39,11 +39,59 @@ function toSafeNumber(value : any) {
 		let hasDigit = false
 		for (let i = 0; i < text.length; i++) {
 			const char = text.substring(i, i + 1)
+			if (char == '0') {
+				hasDigit = true
+				total = total * 10
+				continue
+			}
+			if (char == '1') {
+				hasDigit = true
+				total = total * 10 + 1
+				continue
+			}
+			if (char == '2') {
+				hasDigit = true
+				total = total * 10 + 2
+				continue
+			}
+			if (char == '3') {
+				hasDigit = true
+				total = total * 10 + 3
+				continue
+			}
+			if (char == '4') {
+				hasDigit = true
+				total = total * 10 + 4
+				continue
+			}
+			if (char == '5') {
+				hasDigit = true
+				total = total * 10 + 5
+				continue
+			}
+			if (char == '6') {
+				hasDigit = true
+				total = total * 10 + 6
+				continue
+			}
+			if (char == '7') {
+				hasDigit = true
+				total = total * 10 + 7
+				continue
+			}
+			if (char == '8') {
+				hasDigit = true
+				total = total * 10 + 8
+				continue
+			}
+			if (char == '9') {
+				hasDigit = true
+				total = total * 10 + 9
+				continue
+			}
 			if (char < '0' || char > '9') {
 				break
 			}
-			hasDigit = true
-			total = total * 10 + (char.toInt() - '0'.toInt())
 		}
 		if (hasDigit) {
 			return total

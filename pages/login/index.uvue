@@ -1,108 +1,156 @@
 <template>
-	<view v-if="isBootChecking" class="boot-placeholder"></view>
-	<view v-else class="page">
-		<view class="top-bar" :class="isCodeMode ? '' : 'top-bar-one-tap'">
-			<view class="top-bar-left" @click="handleTopBarClick">
-				<text v-if="isCodeMode" class="back-icon material-symbols-outlined">arrow_back</text>
-				<text class="top-brand">常备</text>
-			</view>
-			<view v-if="isCodeMode" class="top-bar-right"></view>
+	<view>
+		<view v-if="isBootChecking" class="boot-placeholder">
 		</view>
-
-		<view v-if="!isCodeMode" class="one-tap-screen">
-			<view class="hero-block">
-				<view class="hero-logo-shell">
-					<view class="hero-logo-pill">
-						<view class="hero-logo-cross-vertical"></view>
-						<view class="hero-logo-cross-horizontal"></view>
-					</view>
+		<view v-else class="page">
+			<view class="top-bar" :class="isCodeMode ? '' : 'top-bar-one-tap'">
+				<view class="top-bar-left" @click="handleTopBarClick">
+					<text v-if="isCodeMode" class="back-icon material-symbols-outlined">
+						arrow_back
+					</text>
+					<text class="top-brand">
+						常备
+					</text>
 				</view>
-				<text class="hero-brand">常备</text>
-				<text class="hero-subtitle">您的家庭健康管家</text>
-			</view>
-
-			<view class="one-tap-body">
-				<view class="phone-block">
-					<text class="phone-number">138 **** 8888</text>
-					<text class="phone-tip">中国移动提供认证服务</text>
-				</view>
-
-				<view class="action-group">
-					<view class="primary-action" @click="handleOneTapLogin">
-						<text class="primary-action-text">本机号码一键登录</text>
-					</view>
-
-					<view class="secondary-action" @click="goCodeLogin">
-						<text class="secondary-action-text">验证码登录</text>
-					</view>
-				</view>
-
-				<view class="agreement-row" @click="toggleAgreement">
-					<view class="agreement-box" :class="agreed ? 'agreement-box-active' : ''">
-						<text v-if="agreed" class="agreement-check">√</text>
-					</view>
-					<text class="agreement-text">我已阅读并同意《服务协议》和《隐私政策》，并授权常备获取本机号码。</text>
+				<view v-if="isCodeMode" class="top-bar-right">
 				</view>
 			</view>
-		</view>
 
-		<view v-else class="code-screen">
-			<view class="code-hero">
-				<text class="code-title">验证码登录</text>
-				<text class="code-subtitle">请输入您的手机号以接收验证码</text>
+			<view v-if="!isCodeMode" class="one-tap-screen">
+				<view class="hero-block">
+					<view class="hero-logo-shell">
+						<view class="hero-logo-pill">
+							<view class="hero-logo-cross-vertical">
+							</view>
+							<view class="hero-logo-cross-horizontal">
+							</view>
+						</view>
+					</view>
+					<text class="hero-brand">
+						常备
+					</text>
+					<text class="hero-subtitle">
+						您的家庭健康管家
+					</text>
+				</view>
+
+				<view class="one-tap-body">
+					<view class="phone-block">
+						<text class="phone-number">
+							{{ oneTapPhone }}
+						</text>
+						<text class="phone-tip">
+							{{ oneTapSlogan }}
+						</text>
+					</view>
+
+					<view class="action-group">
+						<view class="primary-action" @click="handleOneTapLogin">
+							<text class="primary-action-text">
+								本机号码一键登录
+							</text>
+						</view>
+
+						<view class="secondary-action" @click="goCodeLogin">
+							<text class="secondary-action-text">
+								验证码登录
+							</text>
+						</view>
+					</view>
+
+					<view class="agreement-row" @click="toggleAgreement">
+						<view class="agreement-box" :class="agreed ? 'agreement-box-active' : ''">
+							<text v-if="agreed" class="agreement-check">
+								√
+							</text>
+						</view>
+						<text class="agreement-text">
+							我已阅读并同意《服务协议》和《隐私政策》，并授权常备获取本机号码。
+						</text>
+					</view>
+				</view>
 			</view>
 
-			<view class="code-form">
-				<view class="field-group">
-					<text class="field-label">手机号</text>
-					<view class="field-row field-row-phone">
-						<text class="country-prefix">+86</text>
-						<text class="country-arrow material-symbols-outlined">expand_more</text>
-						<input
+			<view v-else class="code-screen">
+				<view class="code-hero">
+					<text class="code-title">
+						验证码登录
+					</text>
+					<text class="code-subtitle">
+						请输入您的手机号以接收验证码
+					</text>
+				</view>
+
+				<view class="code-form">
+					<view class="field-group">
+						<text class="field-label">
+							手机号
+						</text>
+						<view class="field-row field-row-phone">
+							<text class="country-prefix">
+								+86
+							</text>
+							<text class="country-arrow material-symbols-outlined">
+								expand_more
+							</text>
+							<input
 							v-model="phone"
 							class="line-input line-input-phone"
 							type="number"
 							maxlength="11"
 							placeholder="请输入手机号"
 							placeholder-class="placeholder"
-						/>
+							/>
+						</view>
 					</view>
-				</view>
 
-				<view class="field-group field-gap">
-					<text class="field-label">验证码</text>
-					<view class="field-row">
-						<input
+					<view class="field-group field-gap">
+						<text class="field-label">
+							验证码
+						</text>
+						<view class="field-row">
+							<input
 							v-model="code"
 							class="line-input line-input-code"
 							type="number"
 							maxlength="6"
 							placeholder="请输入验证码"
 							placeholder-class="placeholder"
-						/>
-						<view class="text-code-button" @click="handleSendCode">
-							<text class="text-code-button-label">{{ sendCodeText }}</text>
+							/>
+							<view class="text-code-button" @click="handleSendCode">
+								<text class="text-code-button-label">
+									{{ sendCodeText }}
+								</text>
+							</view>
+						</view>
+					</view>
+
+					<view class="code-submit-wrap">
+						<view class="primary-submit" @click="handleCodeLogin">
+							<text class="primary-action-text">
+								登录
+							</text>
+						</view>
+
+						<view class="switch-login-wrap" @click="goOneTapLogin">
+							<text class="switch-login-text">
+								本机号码一键登录
+							</text>
 						</view>
 					</view>
 				</view>
 
-				<view class="code-submit-wrap">
-					<view class="primary-submit" @click="handleCodeLogin">
-						<text class="primary-action-text">登录</text>
+				<view class="code-footer">
+					<view class="agreement-row" @click="toggleAgreement">
+						<view class="agreement-box agreement-box-small" :class="agreed ? 'agreement-box-active' : ''">
+							<text v-if="agreed" class="agreement-check agreement-check-small">
+								√
+							</text>
+						</view>
+						<text class="agreement-text agreement-text-small">
+							我已阅读并同意《常备服务协议》与《隐私政策》，未注册手机号将自动为您创建常备账号。
+						</text>
 					</view>
-
-					<view class="switch-login-wrap" @click="goOneTapLogin">
-						<text class="switch-login-text">本机号码一键登录</text>
-					</view>
-				</view>
-			</view>
-
-			<view class="code-footer">
-				<view class="agreement-row" @click="toggleAgreement">
-					<view class="agreement-box agreement-box-small" :class="agreed ? 'agreement-box-active' : ''">
-						<text v-if="agreed" class="agreement-check agreement-check-small">√</text>
-					</view>
-					<text class="agreement-text agreement-text-small">我已阅读并同意《常备服务协议》与《隐私政策》，未注册手机号将自动为您创建常备账号。</text>
 				</view>
 			</view>
 		</view>
@@ -111,7 +159,6 @@
 
 <script setup lang="uts">
 	import { ref } from 'vue'
-	import { onHide, onShow } from '@dcloudio/uni-app'
 	import { apiRequest, getErrorMessage } from '../../lib/api.uts'
 	import { getAccessToken, setTokens } from '../../lib/auth.uts'
 
@@ -122,14 +169,17 @@
 	const countdown = ref(0)
 	const sendCodeText = ref('获取验证码')
 	const isBootChecking = ref(true)
+	const oneTapPhone = ref('本机号码一键登录')
+	const oneTapSlogan = ref('点击验证当前 SIM 卡号码')
 	let countdownTimer = 0
+	const uniVerifyManager = uni.getUniVerifyManager()
 
 	function handleBootRoute() {
 		const token = getAccessToken()
 		if (token != null && token != '') {
 			uni.reLaunch({
-				url: '/pages/home/index'
-			})
+					url: '/pages/home/index'
+				})
 			return
 		}
 		isBootChecking.value = false
@@ -153,9 +203,9 @@
 		}
 
 		uni.showToast({
-			title: '请先同意协议',
-			icon: 'none'
-		})
+				title: '请先同意协议',
+				icon: 'none'
+			})
 		return false
 	}
 
@@ -171,6 +221,22 @@
 		isCodeMode.value = false
 	}
 
+	function preLoginUniverify() {
+		console.log('[login.univerify] preLogin start')
+		uniVerifyManager.preLogin({
+				success: (res) => {
+					console.log('[login.univerify] preLogin success', JSON.stringify(res))
+					oneTapPhone.value = res.number
+					oneTapSlogan.value = res.slogan
+				},
+				fail: (error) => {
+					console.log('[login.univerify] preLogin fail', JSON.stringify(error))
+					oneTapPhone.value = '本机号码一键登录'
+					oneTapSlogan.value = '当前环境暂不可用，请使用验证码登录'
+				}
+			})
+	}
+
 	function updateSendCodeText() {
 		sendCodeText.value = countdown.value > 0 ? countdown.value + 's后重发' : '获取验证码'
 	}
@@ -183,19 +249,19 @@
 		countdown.value = 60
 		updateSendCodeText()
 		countdownTimer = setInterval(() => {
-			if (countdown.value <= 1) {
-				countdown.value = 0
-				updateSendCodeText()
-				if (countdownTimer != 0) {
-					clearInterval(countdownTimer)
-					countdownTimer = 0
+				if (countdown.value <= 1) {
+					countdown.value = 0
+					updateSendCodeText()
+					if (countdownTimer != 0) {
+						clearInterval(countdownTimer)
+						countdownTimer = 0
+					}
+					return
 				}
-				return
-			}
 
-			countdown.value = countdown.value - 1
-			updateSendCodeText()
-		}, 1000)
+				countdown.value = countdown.value - 1
+				updateSendCodeText()
+			}, 1000)
 	}
 
 	async function handleSendCode() {
@@ -209,27 +275,27 @@
 
 		if (!isValidPhone(phone.value)) {
 			uni.showToast({
-				title: '请输入正确手机号',
-				icon: 'none'
-			})
+					title: '请输入正确手机号',
+					icon: 'none'
+				})
 			return
 		}
 
 		try {
 			await apiRequest('/auth/send-code', 'POST', {
-				phoneNumber: phone.value,
-			}, false)
+					phoneNumber: phone.value,
+				}, false)
 
 			startCountdown()
 			uni.showToast({
-				title: '验证码已发送，默认 1234',
-				icon: 'none'
-			})
+					title: '验证码已发送，默认 1234',
+					icon: 'none'
+				})
 		} catch (error) {
 			uni.showToast({
-				title: getErrorMessage(error, '发送失败'),
-				icon: 'none'
-			})
+					title: getErrorMessage(error, '发送失败'),
+					icon: 'none'
+				})
 		}
 	}
 
@@ -240,25 +306,25 @@
 
 		if (!isValidPhone(phone.value)) {
 			uni.showToast({
-				title: '请输入正确手机号',
-				icon: 'none'
-			})
+					title: '请输入正确手机号',
+					icon: 'none'
+				})
 			return
 		}
 
 		if (!/^\d{4,6}$/.test(code.value)) {
 			uni.showToast({
-				title: '请输入正确验证码',
-				icon: 'none'
-			})
+					title: '请输入正确验证码',
+					icon: 'none'
+				})
 			return
 		}
 
 		try {
 			const result = await apiRequest('/auth/login', 'POST', {
-				phoneNumber: phone.value,
-				code: code.value,
-			}, false) as UTSJSONObject
+					phoneNumber: phone.value,
+					code: code.value,
+				}, false) as UTSJSONObject
 
 			const tokens = result['tokens'] as UTSJSONObject
 			const accessToken = tokens['accessToken'] as string
@@ -267,20 +333,84 @@
 			setTokens(accessToken, refreshToken)
 
 			uni.showToast({
-				title: '登录成功',
-				icon: 'success'
-			})
+					title: '登录成功',
+					icon: 'success'
+				})
 
 			setTimeout(() => {
-				uni.reLaunch({
-					url: '/pages/home/index'
-				})
-			}, 300)
+					uni.reLaunch({
+							url: '/pages/home/index'
+						})
+				}, 300)
 		} catch (error) {
 			uni.showToast({
-				title: getErrorMessage(error, '登录失败'),
-				icon: 'none'
-			})
+					title: getErrorMessage(error, '登录失败'),
+					icon: 'none'
+				})
+		}
+	}
+
+	async function handleOneTapLoginSuccess(res : UniVerifyManagerLoginSuccess) {
+		try {
+			console.log('[login.univerify] login success raw', JSON.stringify(res))
+			const openId = res.openId
+			const accessToken = res.accessToken
+			console.log('[login.univerify] authResult parsed', JSON.stringify({ openId, accessToken }))
+			console.log('[login.univerify] callFunction start', JSON.stringify({
+						name: 'univerify-phone',
+						hasAccessToken: accessToken != '',
+						hasOpenId: openId != ''
+					}))
+			const cloudResult = await uniCloud.callFunction({
+					name: 'univerify-phone',
+					data: {
+						accessToken,
+						openId,
+					}
+				})
+			console.log('[login.univerify] cloudResult', JSON.stringify(cloudResult.result))
+			const cloudData = cloudResult.result as UTSJSONObject
+			const cloudCode = cloudData['code'] as number | null
+			if (cloudCode != 0) {
+				throw new Error(cloudData['message'] as string)
+			}
+			const phoneNumber = cloudData['phoneNumber'] as string | null
+			if (phoneNumber == null || phoneNumber == '') {
+				throw new Error('手机号获取失败')
+			}
+			console.log('[login.univerify] phoneNumber resolved', phoneNumber)
+			const result = await apiRequest('/auth/univerify-login', 'POST', {
+					phoneNumber,
+				}, false) as UTSJSONObject
+			console.log('[login.univerify] backend login result', JSON.stringify(result))
+			const tokens = result['tokens'] as UTSJSONObject
+			const access = tokens['accessToken'] as string
+			const refresh = tokens['refreshToken'] as string | null
+			setTokens(access, refresh)
+			uniVerifyManager.close()
+			uni.showToast({
+					title: '登录成功',
+					icon: 'success'
+				})
+			setTimeout(() => {
+					uni.reLaunch({
+							url: '/pages/home/index'
+						})
+				}, 300)
+		} catch (error) {
+			let debugText = 'unknown'
+			if (error instanceof Error) {
+				debugText = error.message
+			} else if (error != null) {
+				debugText = '' + error
+			}
+			console.log('[login.univerify] login flow failed detail', debugText)
+			console.log('[login.univerify] login flow failed raw', '' + error)
+			uniVerifyManager.close()
+			uni.showToast({
+					title: getErrorMessage(error, '一键登录失败'),
+					icon: 'none'
+				})
 		}
 	}
 
@@ -288,24 +418,41 @@
 		if (!ensureAgreement()) {
 			return
 		}
-
-		phone.value = '13800138000'
-		code.value = '1234'
-		await handleCodeLogin()
+		console.log('[login.univerify] login start')
+		uniVerifyManager.login({
+				uniVerifyStyle: {
+					fullScreen: false,
+					backgroundColor: '#F7FAFA',
+					logoPath: '/static/logo.png',
+					loginBtnText: '本机号码一键登录'
+				},
+				success: (res) => {
+					handleOneTapLoginSuccess(res)
+				},
+				fail: (error) => {
+					console.log('[login.univerify] login fail', JSON.stringify(error))
+					uni.showToast({
+							title: error.errCode == 30001 ? '已取消登录' : '一键登录失败',
+							icon: 'none'
+						})
+				}
+			})
 	}
 
 	handleBootRoute()
+	preLoginUniverify()
 
 	onShow(() => {
-		handleBootRoute()
-	})
+			handleBootRoute()
+			preLoginUniverify()
+		})
 
 	onHide(() => {
-		if (countdownTimer != 0) {
-			clearInterval(countdownTimer)
-			countdownTimer = 0
-		}
-	})
+			if (countdownTimer != 0) {
+				clearInterval(countdownTimer)
+				countdownTimer = 0
+			}
+		})
 </script>
 
 <style>

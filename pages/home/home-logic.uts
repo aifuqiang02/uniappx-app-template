@@ -1,14 +1,26 @@
 import { apiRequest, getErrorMessage } from '../../lib/api.uts'
-import { chooseImageRaw } from '../../lib/media.uts'
+import { chooseCameraImageRaw, chooseImageRaw, readFileBase64 } from '../../lib/media.uts'
 import { deleteImage, uploadImage } from '../../lib/upload.uts'
+
 import {
 	medicineEntryDraftState,
 	applyMedicineEntryDraft,
+	setMedicineEntryAiErrorMessage,
+	setMedicineEntryAiStage,
+	setMedicineEntryAiTaskId,
 	setMedicineEntryPendingDeleteObjectKeys,
+	setMedicineEntryFormInstructions,
+	setMedicineEntryFormName,
+	setMedicineEntryFormExpiry,
+	setMedicineEntryFormQuantity,
+	setMedicineEntryFormQuantityUnit,
 	setMedicineEntryUploadedImages,
-	setMedicineEntryUploading
+	setMedicineEntryUploading,
+	setMedicineEntryVoiceErrorMessage,
+	setMedicineEntryVoiceStage,
+	setMedicineEntryVoiceTranscript
 } from '../../store/medicine-entry-draft-state.uts'
-import { setMedicineListMedicines } from '../../store/medicine-list-state.uts'
+import { medicineListState, setMedicineListMedicines } from '../../store/medicine-list-state.uts'
 import { setProfileAvatar, setProfileSnapshot } from '../../store/profile-state.uts'
 
 export function trimText(value : string) {
@@ -34,10 +46,49 @@ export function parseQuantity(value : string) {
 	let total = 0
 	for (let i = 0; i < trimmed.length; i++) {
 		const char = trimmed.substring(i, i + 1)
+		if (char == '0') {
+			total = total * 10
+			continue
+		}
+		if (char == '1') {
+			total = total * 10 + 1
+			continue
+		}
+		if (char == '2') {
+			total = total * 10 + 2
+			continue
+		}
+		if (char == '3') {
+			total = total * 10 + 3
+			continue
+		}
+		if (char == '4') {
+			total = total * 10 + 4
+			continue
+		}
+		if (char == '5') {
+			total = total * 10 + 5
+			continue
+		}
+		if (char == '6') {
+			total = total * 10 + 6
+			continue
+		}
+		if (char == '7') {
+			total = total * 10 + 7
+			continue
+		}
+		if (char == '8') {
+			total = total * 10 + 8
+			continue
+		}
+		if (char == '9') {
+			total = total * 10 + 9
+			continue
+		}
 		if (char < '0' || char > '9') {
 			break
 		}
-		total = total * 10 + (char.toInt() - '0'.toInt())
 	}
 	return total
 }
@@ -46,6 +97,16 @@ export function uploadedImageUrl(item : any) {
 	const image = item as UTSJSONObject
 	const url = image['url'] as string | null
 	return url != null ? url : ''
+}
+
+function createTodayText() {
+	const today = new Date()
+	const year = today.getFullYear()
+	const month = today.getMonth() + 1
+	const day = today.getDate()
+	const monthText = month < 10 ? '0' + month : '' + month
+	const dayText = day < 10 ? '0' + day : '' + day
+	return '' + year + '-' + monthText + '-' + dayText
 }
 
 function removeUploadedImage(images : any[], index : number) {
@@ -67,6 +128,223 @@ function appendUploadedImage(images : any[], image : any, max : number) {
 		nextImages.push(image)
 	}
 	return nextImages
+}
+
+function sleep(ms : number) {
+	return new Promise<void>((resolve) => {
+		setTimeout(() => {
+			resolve()
+		}, ms)
+	})
+}
+
+let aiRecognitionPromptAudio : InnerAudioContext | null = null
+
+function destroyAiRecognitionPromptSound() {
+	const currentAudio = aiRecognitionPromptAudio
+	aiRecognitionPromptAudio = null
+	if (currentAudio == null) {
+		return
+	}
+
+	try {
+		currentAudio.destroy()
+	} catch (error) {}
+}
+
+function playAiRecognitionPromptSound() {
+	destroyAiRecognitionPromptSound()
+	const audio = uni.createInnerAudioContext()
+	aiRecognitionPromptAudio = audio
+	audio.autoplay = false
+	audio.src = '/static/tishiyin.wav'
+	audio.onEnded(() => {
+		destroyAiRecognitionPromptSound()
+	})
+	audio.onError((error) => {
+		console.log('[home.ai] prompt sound error', JSON.stringify(error))
+		destroyAiRecognitionPromptSound()
+	})
+
+	try {
+		audio.play()
+	} catch (error) {
+		console.log('[home.ai] prompt sound play failed', JSON.stringify(error))
+		destroyAiRecognitionPromptSound()
+	}
+}
+
+export function cleanupHomeAudioResources() {
+	destroyAiRecognitionPromptSound()
+}
+
+const recorderManager = uni.getRecorderManager()
+let recorderReady = false
+let isVoiceRecording = false
+let pendingVoiceStop : ((value : string) => void) | null = null
+let activeVoiceScene = 'entry'
+
+function ensureRecorderReady() {
+	if (recorderReady) {
+		return
+	}
+	recorderReady = true
+	recorderManager.onStop((result) => {
+		const tempFilePath = result.tempFilePath as string
+		if (pendingVoiceStop != null) {
+			const resolver = pendingVoiceStop
+			pendingVoiceStop = null
+			if (resolver != null) {
+				resolver(tempFilePath)
+			}
+		}
+	})
+	recorderManager.onError((error) => {
+		console.log('[home.voice] recorder error', JSON.stringify(error))
+		setMedicineEntryVoiceStage('failed')
+		setMedicineEntryVoiceErrorMessage('录音失败')
+		isVoiceRecording = false
+		pendingVoiceStop = null
+	})
+}
+
+function inferAudioFormat(filePath : string) {
+	const lower = filePath.toLowerCase()
+	if (lower.endsWith('.wav')) {
+		return 'wav'
+	}
+	if (lower.endsWith('.m4a')) {
+		return 'm4a'
+	}
+	if (lower.endsWith('.aac')) {
+		return 'aac'
+	}
+	return 'wav'
+}
+
+function base64ByteLength(base64Text : string) {
+	let padding = 0
+	if (base64Text.endsWith('==')) {
+		padding = 2
+	} else if (base64Text.endsWith('=')) {
+		padding = 1
+	}
+	return (base64Text.length * 3) / 4 - padding
+}
+
+async function parseVoiceEntryFile(filePath : string) {
+	console.log('[home.voice] parseVoiceEntryFile start', filePath)
+	const base64Result = await readFileBase64(filePath)
+	const audioBase64 = base64Result['data'] as string | null
+	if (audioBase64 == null || audioBase64 == '') {
+		throw new Error('录音文件读取失败')
+	}
+
+	const result = await apiRequest('/voice-entry/parse', 'POST', {
+		audioBase64,
+		audioFormat: inferAudioFormat(filePath),
+		dataLen: base64ByteLength(audioBase64),
+	}, true) as UTSJSONObject
+
+	const transcript = result['transcript'] as string | null
+	const expiry = result['expiry'] as string | null
+	const quantity = result['quantity'] as number | null
+	const unit = result['unit'] as string | null
+	let patchedCount = 0
+
+	setMedicineEntryVoiceTranscript(transcript != null ? transcript : '')
+	if (expiry != null && trimText(expiry) != '') {
+		setMedicineEntryFormExpiry(expiry)
+		patchedCount++
+	}
+	if (quantity != null && quantity > 0) {
+		setMedicineEntryFormQuantity('' + quantity)
+		patchedCount++
+	}
+	if (unit != null && trimText(unit) != '') {
+		setMedicineEntryFormQuantityUnit(unit)
+		patchedCount++
+	}
+	setMedicineEntryVoiceErrorMessage('')
+	setMedicineEntryVoiceStage('ready')
+	console.log('[home.voice] parseVoiceEntryFile success', JSON.stringify(result))
+	console.log('[home.voice] form patched count', patchedCount)
+	if (patchedCount > 0) {
+		uni.showToast({
+			title: '语音信息已回填',
+			icon: 'success'
+		})
+	}
+}
+
+async function runMedicineRecognitionTask(images : any[]) {
+	if (images.length == 0) {
+		console.log('[home.ai] skip recognition: no images')
+		return
+	}
+
+	console.log('[home.ai] create recognition task start, images', JSON.stringify(images))
+	setMedicineEntryAiErrorMessage('')
+	setMedicineEntryAiStage('recognizing')
+	playAiRecognitionPromptSound()
+
+	const task = await apiRequest('/ai-recognition/medicines/tasks', 'POST', {
+		images,
+	}, true) as UTSJSONObject
+	console.log('[home.ai] create recognition task response', JSON.stringify(task))
+
+	const taskId = task['taskId'] as string | null
+	if (taskId == null || taskId == '') {
+		console.log('[home.ai] create recognition task failed: empty taskId')
+		setMedicineEntryAiStage('failed')
+		setMedicineEntryAiErrorMessage('识别任务创建失败')
+		return
+	}
+
+	console.log('[home.ai] task created', taskId)
+	setMedicineEntryAiTaskId(taskId)
+
+	for (let i = 0; i < 20; i++) {
+		await sleep(800)
+		const state = await apiRequest('/ai-recognition/medicines/tasks/' + taskId, 'GET', null, true) as UTSJSONObject
+		const status = state['status'] as string | null
+		console.log('[home.ai] poll task state', i + 1, JSON.stringify(state))
+
+		if (status == 'SUCCEEDED') {
+			const result = state['result'] as UTSJSONObject | null
+			if (result != null) {
+				const recognizedName = result['name'] as string | null
+				const recognizedInstructions = result['instructions'] as string | null
+				const loweredName = recognizedName != null ? recognizedName.toLowerCase() : ''
+				if (recognizedName != null && trimText(recognizedName) != '') {
+					setMedicineEntryFormName(recognizedName)
+				}
+				if (recognizedInstructions != null && trimText(recognizedInstructions) != '') {
+					setMedicineEntryFormInstructions(recognizedInstructions)
+				}
+				if (loweredName.indexOf('未识别') >= 0 || loweredName.indexOf('不确定') >= 0) {
+					setMedicineEntryAiErrorMessage('识别置信度较低，请手动确认药品名称')
+				} else {
+					setMedicineEntryAiErrorMessage('')
+				}
+			}
+			setMedicineEntryAiStage('ready_to_submit')
+			console.log('[home.ai] task succeeded, form fields updated')
+			return
+		}
+
+		if (status == 'FAILED') {
+			const errorMessage = state['errorMessage'] as string | null
+			console.log('[home.ai] task failed', errorMessage)
+			setMedicineEntryAiStage('failed')
+			setMedicineEntryAiErrorMessage(errorMessage != null && errorMessage != '' ? errorMessage : 'AI 识别失败')
+			return
+		}
+	}
+
+	console.log('[home.ai] task timeout')
+	setMedicineEntryAiStage('failed')
+	setMedicineEntryAiErrorMessage('识别超时，请稍后重试')
 }
 
 function collectPendingDeleteObjectKeys(keys : string[], images : any[], index : number) {
@@ -96,6 +374,7 @@ function buildEntryPayload(detail : UTSJSONObject, images : any[]) {
 	const payload : UTSJSONObject = {
 		name: detail['name'],
 		quantity: detail['quantity'],
+		unit: detail['unit'],
 		images,
 		sourceType: 'MANUAL'
 	}
@@ -180,6 +459,7 @@ export function createEntryDraft(item : any) {
 	const instructions = medicine['instructions'] as string | null
 	const expiresOn = medicine['expiresOn'] as string | null
 	const stock = medicine['stock'] as number
+	const unit = medicine['unit'] as string | null
 	const images = medicine['images'] as any | null
 	const imageList = [] as any[]
 
@@ -195,6 +475,7 @@ export function createEntryDraft(item : any) {
 		formInstructions: instructions != null ? instructions : '',
 		formExpiry: expiresOn != null && expiresOn != '' ? expiresOn.slice(0, 10) : '',
 		formQuantity: '' + stock,
+		formQuantityUnit: unit != null && unit != '' ? unit : '个',
 		uploadedImages: imageList,
 	}
 }
@@ -248,23 +529,64 @@ export async function uploadProfileAvatarAction() {
 
 export async function chooseImageAction() {
 	if (medicineEntryDraftState.isUploading) {
+		console.log('[home.ai] chooseImageAction ignored: uploading')
 		return null
 	}
 
 	try {
+		console.log('[home.ai] chooseImageAction start, uploadedImages.length', medicineEntryDraftState.uploadedImages.length)
 		setMedicineEntryUploading(true)
-		const selected = await chooseImageRaw(Math.max(1, 3 - medicineEntryDraftState.uploadedImages.length))
+		setMedicineEntryAiStage('uploading')
+		setMedicineEntryAiErrorMessage('')
+		const selected = await chooseCameraImageRaw(1)
 		const tempFilePaths = selected['tempFilePaths'] as string[]
+		console.log('[home.ai] selected files', JSON.stringify(tempFilePaths))
+		if (medicineEntryDraftState.uploadedImages.length > 0) {
+			const nextKeys = collectPendingDeleteObjectKeys(medicineEntryDraftState.pendingDeleteObjectKeys, medicineEntryDraftState.uploadedImages, 0)
+			setMedicineEntryPendingDeleteObjectKeys(nextKeys)
+			setMedicineEntryUploadedImages([])
+		}
+		const uploadedList = [] as any[]
 		for (let i = 0; i < tempFilePaths.length; i++) {
 			const filePath = tempFilePaths[i]
+			console.log('[home.ai] upload image start', filePath)
 			const image = await uploadImage(filePath)
-			setMedicineEntryUploadedImages(appendUploadedImage(medicineEntryDraftState.uploadedImages, image, 3))
+			console.log('[home.ai] upload image success', JSON.stringify(image))
+			uploadedList.push(image)
+			setMedicineEntryUploadedImages(appendUploadedImage(medicineEntryDraftState.uploadedImages, image, 1))
 		}
+
+		if (uploadedList.length > 0) {
+			await runMedicineRecognitionTask(uploadedList)
+		} else {
+			setMedicineEntryAiStage('idle')
+		}
+
 		return null
 	} catch (error) {
+		console.log('[home.ai] chooseImageAction failed', JSON.stringify(error))
+		setMedicineEntryAiStage('failed')
+		setMedicineEntryAiErrorMessage(getErrorMessage(error, '识别失败'))
 		return getErrorMessage(error, '选图失败')
 	} finally {
+		console.log('[home.ai] chooseImageAction end')
 		setMedicineEntryUploading(false)
+	}
+}
+
+export async function retryAiRecognitionAction() {
+	if (medicineEntryDraftState.uploadedImages.length == 0) {
+		return '请先上传图片'
+	}
+
+	try {
+		await runMedicineRecognitionTask(medicineEntryDraftState.uploadedImages)
+		return null
+	} catch (error) {
+		const message = getErrorMessage(error, '重试失败')
+		setMedicineEntryAiStage('failed')
+		setMedicineEntryAiErrorMessage(message)
+		return message
 	}
 }
 
@@ -272,6 +594,149 @@ export function removeImageAction(index : number) {
 	const nextKeys = collectPendingDeleteObjectKeys(medicineEntryDraftState.pendingDeleteObjectKeys, medicineEntryDraftState.uploadedImages, index)
 	setMedicineEntryPendingDeleteObjectKeys(nextKeys)
 	setMedicineEntryUploadedImages(removeUploadedImage(medicineEntryDraftState.uploadedImages, index))
+	if (medicineEntryDraftState.uploadedImages.length <= 1) {
+		setMedicineEntryAiStage('idle')
+		setMedicineEntryAiTaskId('')
+		setMedicineEntryAiErrorMessage('')
+		setMedicineEntryFormName('')
+		setMedicineEntryFormInstructions('')
+	}
+}
+
+export function startVoiceRecordAction() {
+	if (isVoiceRecording) {
+		return
+	}
+	activeVoiceScene = 'entry'
+	ensureRecorderReady()
+	setMedicineEntryVoiceErrorMessage('')
+	setMedicineEntryVoiceStage('recording')
+	setMedicineEntryVoiceTranscript('')
+	isVoiceRecording = true
+	recorderManager.start({
+		duration: 60000,
+		sampleRate: 16000,
+		numberOfChannels: 1,
+		format: 'wav',
+	})
+	console.log('[home.voice] recorder start')
+}
+
+export async function stopVoiceRecordAction() {
+	if (!isVoiceRecording) {
+		return null
+	}
+	setMedicineEntryVoiceStage('parsing')
+	console.log('[home.voice] recorder stop requested')
+	const filePath = await new Promise<string>((resolve) => {
+		pendingVoiceStop = resolve
+		recorderManager.stop()
+	})
+	isVoiceRecording = false
+
+	try {
+		await parseVoiceEntryFile(filePath)
+		return null
+	} catch (error) {
+		const message = getErrorMessage(error, '语音识别失败')
+		setMedicineEntryVoiceStage('failed')
+		setMedicineEntryVoiceErrorMessage(message)
+		return message
+	}
+}
+
+export async function searchMedicinesByVoiceAction(selectedStatus : string) {
+	if (!isVoiceRecording || activeVoiceScene != 'medicine-search') {
+		return {
+			success: false,
+			message: '请先长按开始说话',
+		} as UTSJSONObject
+	}
+
+	const filePath = await new Promise<string>((resolve) => {
+		pendingVoiceStop = resolve
+		recorderManager.stop()
+	})
+	isVoiceRecording = false
+	activeVoiceScene = 'entry'
+
+	const base64Result = await readFileBase64(filePath)
+	const audioBase64 = base64Result['data'] as string | null
+	if (audioBase64 == null || audioBase64 == '') {
+		return {
+			success: false,
+			message: '录音文件读取失败',
+		} as UTSJSONObject
+	}
+
+	const result = await apiRequest('/voice-entry/medicines/search', 'POST', {
+		audioBase64,
+		audioFormat: inferAudioFormat(filePath),
+		dataLen: base64ByteLength(audioBase64),
+	}, true) as UTSJSONObject
+
+	const transcript = result['transcript'] as string | null
+	const medicineIdsResult = result['medicineIds'] as string[] | null
+	const medicineIds = medicineIdsResult != null ? medicineIdsResult : [] as string[]
+	const todayText = createTodayText()
+	const sourceMedicines = medicineListState.medicines
+	const filtered = [] as any[]
+
+	if (medicineIds.length > 0) {
+		for (let i = 0; i < sourceMedicines.length; i++) {
+			const item = sourceMedicines[i] as UTSJSONObject
+			const id = item['id'] as string
+			let matched = false
+			for (let j = 0; j < medicineIds.length; j++) {
+				if (medicineIds[j] == id) {
+					matched = true
+					break
+				}
+			}
+			if (!matched) {
+				continue
+			}
+
+			if (selectedStatus == 'ACTIVE') {
+				const expiresOn = item['expiresOn'] as string | null
+				if (expiresOn != null && expiresOn != '' && expiresOn.slice(0, 10) < todayText) {
+					continue
+				}
+			}
+			if (selectedStatus == 'EXPIRED') {
+				const expiresOn = item['expiresOn'] as string | null
+				const status = item['status'] as string | null
+				if ((status == null || status != 'EXPIRED') && (expiresOn == null || expiresOn == '' || expiresOn.slice(0, 10) >= todayText)) {
+					continue
+				}
+			}
+			filtered.push(sourceMedicines[i])
+		}
+	}
+
+	return {
+		success: true,
+		transcript: transcript != null ? transcript : '',
+		medicineIds: medicineIds != null ? medicineIds : [] as string[],
+		items: filtered,
+	} as UTSJSONObject
+}
+
+export function startMedicineSearchVoiceAction() {
+	if (isVoiceRecording) {
+		return false
+	}
+	activeVoiceScene = 'medicine-search'
+	ensureRecorderReady()
+	isVoiceRecording = true
+	recorderManager.start({
+		duration: 60000,
+		sampleRate: 16000,
+		numberOfChannels: 1,
+		format: 'wav',
+	})
+	console.log('[home.voice-search] recorder start')
+	return true
 }
 
 export async function saveMedicineEntryAction(detail : UTSJSONObject) {

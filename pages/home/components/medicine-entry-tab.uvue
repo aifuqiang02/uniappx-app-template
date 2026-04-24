@@ -1,111 +1,102 @@
 <template>
-		<view class="page-flow">
-			<view class="page">
-				<view class="entry-top-spacer" :style="entryTopSpacerStyle()"></view>
-				<scroll-view scroll-y direction="vertical" show-scrollbar class="content-scroll" :style="contentScrollStyle">
-					<view class="content">
-					<view class="photo-entry-card">
-						<view class="photo-entry-orb photo-entry-orb-top"></view>
-						<view class="photo-entry-orb photo-entry-orb-bottom"></view>
-
-						<view class="photo-preview-row">
-							<view v-for="(image, index) in uploadedImages" :key="index" class="photo-preview-item">
-								<image class="photo-preview-image" :src="resolveUploadedImageUrl(image)" mode="aspectFill"></image>
-								<view class="photo-preview-remove" @click="handleRemoveImage(index)">
-									<text class="photo-preview-remove-text">×</text>
+	<view class="page-flow">
+		<view class="page">
+			<view class="page-bg-gradient"></view>
+			<view class="page-bg-orb"></view>
+			<view class="entry-top-spacer" :style="entryTopSpacerStyle()"></view>
+			<scroll-view scroll-y direction="vertical" show-scrollbar class="content-scroll" :style="contentScrollStyle">
+				<view class="content">
+					<view class="header-block">
+						<text class="header-title">请核对并完善药品信息</text>
+						<text class="header-subtitle">AI 已自动识别部分内容，请检查无误</text>
+						<view v-if="uploadedImages.length > 0 || aiStage != 'idle'" class="header-status-row">
+							<view v-if="uploadedImages.length > 0" class="header-thumb-shell">
+								<image class="header-thumb-image" :src="resolveUploadedImageUrl(uploadedImages[0])" mode="aspectFill"></image>
+							</view>
+							<view class="header-status-copy">
+								<text class="header-status-title">{{ uploadedImages.length > 0 ? '识别图片已就绪' : '等待识别' }}</text>
+								<view v-if="aiStage != 'idle'" class="status-chip" :class="aiStage == 'failed' || aiStage == 'FAILED' ? 'status-chip-error' : ''">
+									<text class="status-chip-text">{{ aiStageText() }}</text>
+								</view>
+								<text v-if="aiStage == 'failed' && aiErrorMessage != ''" class="header-error-text">{{ aiErrorMessage }}</text>
+								<view class="header-action-row">
+									<text class="header-action-link" @click="emit('chooseImage')">{{ uploadedImages.length > 0 ? '重新上传' : '上传图片' }}</text>
+									<text v-if="uploadedImages.length > 0" class="header-action-link" @click="handleRemoveImage(0)">删除原图</text>
+									<text v-if="props.aiStage == 'failed' || props.aiStage == 'FAILED'" class="header-action-link" @click="emit('retryAiRecognition')">重试识别</text>
 								</view>
 							</view>
+						</view>
+					</view>
 
-							<view v-if="uploadedImages.length < 3" class="photo-preview-item photo-preview-add" @click="emit('chooseImage')">
-								<text class="photo-preview-add-icon material-symbols-outlined">add_a_photo</text>
-								<text class="photo-preview-add-text">继续添加</text>
+					<view class="form-card primary-card">
+						<view class="field-row field-row-border">
+							<text class="row-label">药品名称 <text class="field-required">*</text></text>
+							<view class="row-value-wrap row-value-fill">
+								<input
+									:modelValue="formName"
+									class="row-input row-input-right"
+									placeholder="请输入药品名称"
+									placeholder-class="entry-placeholder"
+									@input="handleFormNameInput"
+								/>
+								<text v-if="showAiNameTag()" class="row-ai-icon material-symbols-outlined">auto_awesome</text>
 							</view>
 						</view>
 
-						<view class="photo-entry-copy">
-							<text class="photo-entry-title">{{ editingMedicineId == '' ? '拍照录入药品 (支持多张)' : '补充药品照片 (支持多张)' }}</text>
-							<text class="photo-entry-desc">Add multiple photos of the packaging for better recognition</text>
-						</view>
-					</view>
-
-					<view class="voice-card" @click="emit('todo', '语音录入')">
-						<view class="voice-icon-wrap">
-							<text class="voice-icon material-symbols-outlined">mic</text>
-						</view>
-						<view class="voice-copy">
-							<text class="voice-title">AI 语音辅助录入</text>
-							<text class="voice-desc">点击说话：如“还剩2盒”</text>
-						</view>
-						<text class="voice-wave material-symbols-outlined">graphic_eq</text>
-					</view>
-
-					<view class="manual-divider">
-						<view class="manual-line"></view>
-						<text class="manual-text">或手动填写</text>
-						<view class="manual-line"></view>
-					</view>
-
-					<view class="form-card">
-						<view class="section-title-row">
-							<text class="section-title-icon material-symbols-outlined">info</text>
-							<text class="section-title-text">基本信息</text>
-						</view>
-
-						<view class="field-block">
-							<text class="field-label">药品名称 <text class="field-required">*</text></text>
-							<input
-								:modelValue="formName"
-								class="ghost-input"
-								placeholder="例如：布洛芬缓释胶囊 400mg"
-								placeholder-class="entry-placeholder"
-								@input="handleFormNameInput"
-							/>
-						</view>
-
-						<view class="field-block field-block-gap">
-							<text class="field-label">服用说明 / 备注</text>
-							<textarea
-								:modelValue="formInstructions"
-								class="textarea-input"
-								placeholder="例如：饭后服用，一次一粒。注意不要与xxx同服。"
-								placeholder-class="entry-placeholder"
-								maxlength="200"
-								@input="handleFormInstructionsInput"
-							/>
-						</view>
-					</view>
-
-					<view class="form-card">
-						<view class="section-title-row">
-							<text class="section-title-icon material-symbols-outlined">inventory_2</text>
-							<text class="section-title-text">库存管理</text>
-						</view>
-
-						<view class="field-block">
-							<text class="field-label">有效期至</text>
-							<view class="date-input-row">
+						<view class="field-row field-row-border field-row-gap">
+							<text class="row-label">有效期至</text>
+							<view class="row-value-wrap row-value-fill">
 								<input
 									:modelValue="formExpiry"
-									class="ghost-input date-input"
+									class="row-input row-input-right"
 									placeholder="YYYY-MM-DD"
 									placeholder-class="entry-placeholder"
 									@input="handleFormExpiryInput"
 								/>
-								<text class="date-input-icon material-symbols-outlined">calendar_today</text>
 							</view>
 						</view>
 
-						<view class="field-block field-block-gap">
-							<text class="field-label">剩余数量</text>
-							<input
-								:modelValue="formQuantity"
-								class="ghost-input"
-								type="number"
-								placeholder="例如：24"
-								placeholder-class="entry-placeholder"
-								@input="handleFormQuantityInput"
-							/>
+						<view class="field-row field-row-gap">
+							<text class="row-label">剩余数量</text>
+							<view class="row-value-inline">
+								<input
+									:modelValue="formQuantity"
+									class="row-input row-input-number"
+									type="number"
+									placeholder="24"
+									placeholder-class="entry-placeholder"
+									@input="handleFormQuantityInput"
+								/>
+								<input
+									:modelValue="formQuantityUnit"
+									class="row-input row-input-unit"
+									placeholder="单位"
+									placeholder-class="entry-placeholder"
+									@input="handleFormQuantityUnitInput"
+								/>
+							</view>
 						</view>
+					</view>
+
+					<view class="form-card detail-card">
+						<view class="detail-title-row">
+							<text class="detail-title-icon material-symbols-outlined">auto_awesome</text>
+							<text class="detail-title-text">备注与详情</text>
+						</view>
+						<textarea
+							:modelValue="formInstructions"
+							class="detail-textarea"
+							auto-height
+							placeholder="AI 提取了说明书中的关键信息..."
+							placeholder-class="entry-placeholder"
+							maxlength="200"
+							@input="handleFormInstructionsInput"
+							/>
+					</view>
+
+					<view v-if="stageHintText() != '' || voiceTranscript != ''" class="status-panel">
+						<text v-if="stageHintText() != ''" class="status-panel-text" :class="voiceErrorMessage != '' || aiErrorMessage != '' ? 'status-panel-text-error' : ''">{{ stageHintText() }}</text>
+						<text v-if="voiceTranscript != ''" class="voice-transcript-inline">识别文本：{{ voiceTranscript }}</text>
 					</view>
 
 					<view class="bottom-action-spacer"></view>
@@ -113,9 +104,32 @@
 			</scroll-view>
 
 			<view class="bottom-action-bar">
-				<view class="save-button" @click="emitSave">
-					<text class="save-button-icon material-symbols-outlined">save</text>
-					<text class="save-button-text">{{ editingMedicineId == '' ? '保存药品' : '更新药品' }}</text>
+				<view class="bottom-action-row">
+					<view class="step-button" @click="emit('chooseImage')">
+						<view class="step-index"><text class="step-index-text">1</text></view>
+						<text class="step-icon material-symbols-outlined">photo_camera</text>
+						<text class="step-label">拍照识别</text>
+					</view>
+
+					<view class="step-arrow-wrap">
+						<text class="step-arrow material-symbols-outlined">chevron_right</text>
+					</view>
+
+					<view class="step-button" :class="voiceStage == 'recording' ? 'step-button-recording' : ''" @touchstart="handleVoiceTouchStart" @touchend="handleVoiceTouchEnd" @touchcancel="handleVoiceTouchEnd">
+						<view class="step-index"><text class="step-index-text">2</text></view>
+						<text class="step-icon material-symbols-outlined">mic</text>
+						<text class="step-label">长按录入</text>
+					</view>
+
+					<view class="step-arrow-wrap">
+						<text class="step-arrow material-symbols-outlined">chevron_right</text>
+					</view>
+
+					<view class="step-button" @click="emitSave">
+						<view class="step-index"><text class="step-index-text">3</text></view>
+						<text class="step-icon material-symbols-outlined">check_circle</text>
+						<text class="step-label">{{ editingMedicineId == '' ? '保存药品' : '更新药品' }}</text>
+					</view>
 				</view>
 			</view>
 		</view>
@@ -124,8 +138,9 @@
 
 <script setup lang="uts">
 	import { parseQuantity, trimText, uploadedImageUrl } from '../home-logic.uts'
+	import { vibrate } from '@/uni_modules/lime-vibrate'
 
-	const emit = defineEmits(['todo', 'chooseImage', 'removeImage', 'save', 'update:formName', 'update:formInstructions', 'update:formExpiry', 'update:formQuantity'])
+	const emit = defineEmits(['todo', 'chooseImage', 'retryAiRecognition', 'startVoiceRecord', 'stopVoiceRecord', 'removeImage', 'save', 'update:formName', 'update:formInstructions', 'update:formExpiry', 'update:formQuantity', 'update:formQuantityUnit'])
 	const props = defineProps<{
 		editingMedicineId: string
 		uploadedImages: any[]
@@ -133,9 +148,71 @@
 		formInstructions: string
 		formExpiry: string
 		formQuantity: string
+		formQuantityUnit: string
+		aiStage: string
+		aiErrorMessage: string
+		voiceStage: string
+		voiceErrorMessage: string
+		voiceTranscript: string
 		contentScrollStyle: string
 		safeTopInset: number
 	}>()
+
+	function aiStageText() {
+		if (props.aiStage == 'uploading') {
+			return '图片上传中...'
+		}
+		if (props.aiStage == 'recognizing' || props.aiStage == 'processing' || props.aiStage == 'pending' || props.aiStage == 'PROCESSING' || props.aiStage == 'PENDING') {
+			return 'AI 正在识别药品信息...'
+		}
+		if (props.aiStage == 'ready_to_submit' || props.aiStage == 'SUCCEEDED') {
+			return '信息已完成，请确认后保存'
+		}
+		if (props.aiStage == 'failed' || props.aiStage == 'FAILED') {
+			return '识别失败，可手动填写'
+		}
+		return '处理中...'
+	}
+
+	function stageHintText() {
+		if (props.voiceStage == 'recording') {
+			return '正在录音，松手后自动识别有效期、剩余数量和单位'
+		}
+		if (props.voiceStage == 'parsing') {
+			return '正在识别语音内容并提取录入信息...'
+		}
+		if (props.voiceErrorMessage != '') {
+			return props.voiceErrorMessage
+		}
+		if (props.voiceStage == 'ready') {
+			return '语音信息已完成回填，请确认后保存'
+		}
+		if (props.aiErrorMessage != '') {
+			return props.aiErrorMessage
+		}
+		if (props.aiStage == 'uploading') {
+			return '图片上传中...'
+		}
+		if (props.aiStage == 'recognizing' || props.aiStage == 'processing' || props.aiStage == 'pending' || props.aiStage == 'PROCESSING' || props.aiStage == 'PENDING') {
+			return 'AI 正在识别药品名称与备注...'
+		}
+		if (props.aiStage == 'ready_to_submit' || props.aiStage == 'SUCCEEDED') {
+			return '图片识别已完成，可继续长按录入补充信息'
+		}
+		return ''
+	}
+
+	function isAiRecognized() {
+		return props.aiStage == 'ready_to_submit' || props.aiStage == 'SUCCEEDED'
+	}
+
+	function showAiNameTag() {
+		return isAiRecognized() && trimText(props.formName) != ''
+	}
+
+	function showAiInstructionsTag() {
+		return isAiRecognized() && trimText(props.formInstructions) != ''
+	}
 
 	function entryTopSpacerStyle() {
 		return 'height:' + props.safeTopInset + 'px;'
@@ -161,6 +238,19 @@
 		emit('update:formQuantity', event.detail.value)
 	}
 
+	function handleFormQuantityUnitInput(event : UniInputEvent) {
+		emit('update:formQuantityUnit', event.detail.value)
+	}
+
+	function handleVoiceTouchStart() {
+		vibrate()
+		emit('startVoiceRecord')
+	}
+
+	function handleVoiceTouchEnd() {
+		emit('stopVoiceRecord')
+	}
+
 	function handleRemoveImage(index : number) {
 		emit('removeImage', index)
 	}
@@ -170,6 +260,7 @@
 		const formInstructions = props.formInstructions
 		const formExpiry = props.formExpiry
 		const formQuantity = props.formQuantity
+		const formQuantityUnit = props.formQuantityUnit
 
 		if (trimText(formName) == '') {
 			emit('todo', '请填写药品名称')
@@ -180,7 +271,8 @@
 			name: trimText(formName),
 			instructions: trimText(formInstructions),
 			expiry: trimText(formExpiry),
-			quantity: parseQuantity(formQuantity)
+			quantity: parseQuantity(formQuantity),
+			unit: trimText(formQuantityUnit)
 		})
 	}
 </script>
@@ -192,12 +284,35 @@
 
 	.page {
 		min-height: 1000px;
-		background-color: #f7fafa;
+		background-color: #f1f4f4;
 		position: relative;
+	}
+
+	.page-bg-gradient {
+		position: absolute;
+		left: 0;
+		right: 0;
+		top: 0;
+		height: 220px;
+		background-color: rgba(150, 241, 250, 0.12);
+		z-index: 0;
+	}
+
+	.page-bg-orb {
+		position: absolute;
+		top: -60px;
+		right: -48px;
+		width: 220px;
+		height: 220px;
+		border-radius: 999px;
+		background-color: rgba(150, 241, 250, 0.22);
+		z-index: 0;
 	}
 
 	.content-scroll {
 		width: 100%;
+		position: relative;
+		z-index: 1;
 	}
 
 	.entry-top-spacer {
@@ -205,275 +320,264 @@
 	}
 
 	.content {
-		padding-top: 40px;
+		padding-top: 24px;
 		padding-left: 24px;
 		padding-right: 24px;
 		padding-bottom: 0;
 	}
 
-	.photo-entry-card {
-		position: relative;
-		overflow: hidden;
-		margin-bottom: 16px;
-		padding-top: 24px;
-		padding-right: 24px;
-		padding-bottom: 24px;
-		padding-left: 24px;
-		border-radius: 16px;
-		background-color: #006067;
+	.header-block {
+		margin-bottom: 24px;
 	}
 
-	.photo-entry-orb {
-		position: absolute;
-		border-radius: 999px;
-	}
-
-	.photo-entry-orb-top {
-		top: -36px;
-		right: -36px;
-		width: 112px;
-		height: 112px;
-		background-color: rgba(255, 255, 255, 0.12);
-	}
-
-	.photo-entry-orb-bottom {
-		left: -24px;
-		bottom: -24px;
-		width: 84px;
-		height: 84px;
-		background-color: rgba(0, 0, 0, 0.08);
-	}
-
-	.photo-preview-row {
-		flex-direction: row;
-		align-items: center;
-		margin-bottom: 18px;
-	}
-
-	.photo-preview-item {
-		width: 64px;
-		height: 64px;
-		margin-right: 12px;
-		border-radius: 12px;
-		justify-content: center;
-		align-items: center;
-	}
-
-	.photo-preview-add {
-		border-width: 2px;
-		border-style: solid;
-		border-color: rgba(255, 255, 255, 0.6);
-		background-color: rgba(255, 255, 255, 0.22);
-	}
-
-	.photo-preview-add-icon {
+	.header-title {
 		font-size: 24px;
-		line-height: 24px;
-		color: #ffffff;
-	}
-
-	.photo-preview-add-text {
-		margin-top: 4px;
-		font-size: 10px;
 		font-weight: 700;
-		line-height: 12px;
-		color: #ffffff;
-	}
-
-	.photo-preview-image {
-		width: 64px;
-		height: 64px;
-		border-radius: 12px;
-	}
-
-	.photo-preview-remove {
-		position: absolute;
-		top: 4px;
-		right: 4px;
-		width: 18px;
-		height: 18px;
-		border-radius: 9px;
-		background-color: rgba(0, 0, 0, 0.45);
-		justify-content: center;
-		align-items: center;
-	}
-
-	.photo-preview-remove-text {
-		font-size: 12px;
-		line-height: 12px;
-		color: #ffffff;
-	}
-
-	.photo-entry-copy {
-		align-items: center;
-	}
-
-	.photo-entry-title {
-		font-size: 18px;
-		font-weight: 700;
-		line-height: 24px;
-		text-align: center;
-		color: #ffffff;
-	}
-
-	.photo-entry-desc {
-		margin-top: 6px;
-		font-size: 12px;
-		line-height: 18px;
-		text-align: center;
-		color: #d0fbff;
-	}
-
-	.voice-card {
-		margin-bottom: 24px;
-		padding-top: 12px;
-		padding-right: 14px;
-		padding-bottom: 12px;
-		padding-left: 14px;
-		border-radius: 16px;
-		border-width: 1px;
-		border-style: solid;
-		border-color: rgba(189, 201, 202, 0.3);
-		background-color: #ffffff;
-		flex-direction: row;
-		align-items: center;
-	}
-
-	.voice-icon-wrap {
-		width: 40px;
-		height: 40px;
-		border-radius: 20px;
-		background-color: rgba(0, 123, 131, 0.2);
-		justify-content: center;
-		align-items: center;
-	}
-
-	.voice-icon {
-		font-size: 20px;
-		line-height: 20px;
+		line-height: 30px;
 		color: #006067;
 	}
 
-	.voice-copy {
-		flex: 1;
-		margin-left: 12px;
-	}
-
-	.voice-title {
-		font-size: 14px;
-		font-weight: 700;
-		line-height: 18px;
-		color: #181c1d;
-	}
-
-	.voice-desc {
-		margin-top: 2px;
-		font-size: 12px;
-		line-height: 16px;
-		color: #667172;
-	}
-
-	.voice-wave {
-		font-size: 20px;
-		line-height: 20px;
-		color: #98a4a5;
-	}
-
-	.manual-divider {
-		margin-bottom: 24px;
-		flex-direction: row;
-		align-items: center;
-	}
-
-	.manual-line {
-		flex: 1;
-		height: 1px;
-		background-color: rgba(189, 201, 202, 0.3);
-	}
-
-	.manual-text {
-		margin-left: 16px;
-		margin-right: 16px;
-		font-size: 12px;
-		font-weight: 500;
-		line-height: 16px;
-		color: #667172;
-	}
-
-	.form-card {
-		margin-bottom: 16px;
-		padding-top: 24px;
-		padding-right: 24px;
-		padding-bottom: 24px;
-		padding-left: 24px;
-		border-radius: 16px;
-		background-color: #ffffff;
-	}
-
-	.section-title-row {
-		flex-direction: row;
-		align-items: center;
-		margin-bottom: 24px;
-	}
-
-	.section-title-icon {
-		font-size: 16px;
-		line-height: 16px;
-		color: #006067;
-	}
-
-	.section-title-text {
-		margin-left: 8px;
-		font-size: 13px;
-		font-weight: 700;
-		line-height: 16px;
-		letter-spacing: 1px;
-		color: #006067;
-	}
-
-	.field-block {
-		width: 100%;
-	}
-
-	.field-block-gap {
-		margin-top: 24px;
-	}
-
-	.field-label {
-		font-size: 12px;
-		font-weight: 600;
-		line-height: 16px;
-		color: #667172;
-	}
-
-	.field-required {
-		color: #a05f2e;
-	}
-
-	.ghost-input {
-		height: 48px;
-		padding-top: 12px;
-		padding-bottom: 12px;
-		padding-left: 0;
-		padding-right: 0;
-		border-bottom-width: 1px;
-		border-bottom-style: solid;
-		border-bottom-color: rgba(189, 201, 202, 0.2);
-		background-color: transparent;
-		font-size: 16px;
-		color: #181c1d;
-	}
-
-	.textarea-input {
-		height: 92px;
+	.header-subtitle {
 		margin-top: 8px;
+		font-size: 14px;
+		line-height: 20px;
+		color: #466270;
+	}
+
+	.header-status-row {
+		margin-top: 14px;
 		padding-top: 12px;
 		padding-right: 12px;
 		padding-bottom: 12px;
 		padding-left: 12px;
-		border-width: 1px;
-		border-style: solid;
-		border-color: rgba(189, 201, 202, 0.2);
+		border-radius: 12px;
+		background-color: rgba(150, 241, 250, 0.16);
+		flex-direction: row;
+		align-items: center;
+	}
+
+	.header-thumb-shell {
+		width: 52px;
+		height: 52px;
+		border-radius: 12px;
+		overflow: hidden;
+		background-color: #ffffff;
+	}
+
+	.header-thumb-image {
+		width: 52px;
+		height: 52px;
+	}
+
+	.header-status-copy {
+		flex: 1;
+		margin-left: 12px;
+	}
+
+	.header-status-title {
+		font-size: 13px;
+		font-weight: 600;
+		line-height: 18px;
+		color: #00363b;
+	}
+
+	.header-action-row {
+		margin-top: 8px;
+		flex-direction: row;
+		align-items: center;
+		flex-wrap: wrap;
+	}
+
+	.header-action-link {
+		margin-right: 14px;
+		font-size: 12px;
+		font-weight: 600;
+		line-height: 16px;
+		color: #006067;
+	}
+
+	.status-chip {
+		align-self: flex-start;
+		margin-top: 6px;
+		padding-top: 4px;
+		padding-right: 8px;
+		padding-bottom: 4px;
+		padding-left: 8px;
+		border-radius: 999px;
+		background-color: rgba(0, 96, 103, 0.12);
+	}
+
+	.status-chip-error {
+		background-color: rgba(186, 26, 26, 0.14);
+	}
+
+	.status-chip-text {
+		font-size: 11px;
+		font-weight: 600;
+		line-height: 14px;
+		color: #006067;
+	}
+
+	.header-error-text {
+		margin-top: 6px;
+		font-size: 12px;
+		line-height: 16px;
+		color: #ba1a1a;
+	}
+
+	.form-card {
+		border-radius: 16px;
+		background-color: #ffffff;
+		padding-top: 20px;
+		padding-right: 20px;
+		padding-bottom: 20px;
+		padding-left: 20px;
+	}
+
+	.primary-card {
+		margin-bottom: 16px;
+	}
+
+	.detail-card {
+		margin-bottom: 16px;
+	}
+
+	.status-panel {
+		margin-bottom: 12px;
+		padding-top: 12px;
+		padding-right: 14px;
+		padding-bottom: 12px;
+		padding-left: 14px;
+		border-radius: 12px;
+		background-color: rgba(255, 255, 255, 0.72);
+	}
+
+	.status-panel-text {
+		font-size: 12px;
+		line-height: 18px;
+		color: #466270;
+	}
+
+	.status-panel-text-error {
+		color: #ba1a1a;
+	}
+
+	.field-row {
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	.field-row-gap {
+		margin-top: 16px;
+	}
+
+	.field-row-border {
+		padding-bottom: 16px;
+		border-bottom-width: 1px;
+		border-bottom-style: solid;
+		border-bottom-color: rgba(189, 201, 202, 0.2);
+	}
+
+	.row-label {
+		font-size: 18px;
+		font-weight: 500;
+		line-height: 22px;
+		color: #181c1d;
+	}
+
+	.field-required {
+		font-size: 12px;
+		color: #ba1a1a;
+	}
+
+	.row-value-wrap {
+		flex-direction: row;
+		align-items: center;
+		justify-content: flex-end;
+	}
+
+	.row-value-fill {
+		flex: 1;
+		margin-left: 12px;
+	}
+
+	.row-value-inline {
+		flex-direction: row;
+		align-items: center;
+		justify-content: flex-end;
+	}
+
+	.row-input {
+		background-color: transparent;
+		font-size: 18px;
+		color: #181c1d;
+		padding-top: 0;
+		padding-right: 0;
+		padding-bottom: 0;
+		padding-left: 0;
+	}
+
+	.row-input-right {
+		flex: 1;
+		text-align: right;
+		padding-right: 28px;
+	}
+
+	.row-input-number {
+		width: 72px;
+		text-align: right;
+		font-weight: 700;
+	}
+
+	.row-input-unit {
+		width: 44px;
+		margin-left: 8px;
+		text-align: left;
+	}
+
+	.row-unit-text {
+		margin-left: 8px;
+		font-size: 18px;
+		line-height: 22px;
+		color: #6e797a;
+	}
+
+	.row-ai-icon {
+		position: absolute;
+		right: 0;
+		font-size: 18px;
+		line-height: 18px;
+		color: #006067;
+	}
+
+	.detail-title-row {
+		flex-direction: row;
+		align-items: center;
+		margin-bottom: 12px;
+	}
+
+	.detail-title-icon {
+		font-size: 20px;
+		line-height: 20px;
+		color: #006067;
+	}
+
+	.detail-title-text {
+		margin-left: 8px;
+		font-size: 18px;
+		font-weight: 500;
+		line-height: 22px;
+		color: #181c1d;
+	}
+
+	.detail-textarea {
+		width: 100%;
+		min-height: 72px;
+		padding-top: 12px;
+		padding-right: 12px;
+		padding-bottom: 12px;
+		padding-left: 12px;
 		border-radius: 12px;
 		background-color: #f1f4f4;
 		font-size: 14px;
@@ -481,29 +585,12 @@
 		color: #181c1d;
 	}
 
-	.date-input-row {
-		position: relative;
-	}
-
-	.date-input {
-		padding-right: 32px;
-	}
-
-	.date-input-icon {
-		position: absolute;
-		right: 0;
-		top: 14px;
-		font-size: 18px;
-		line-height: 18px;
-		color: #6e797a;
-	}
-
 	.entry-placeholder {
-		color: #6e797a;
+		color: #7c8788;
 	}
 
 	.bottom-action-spacer {
-		height: 120px;
+		height: 100px;
 	}
 
 	.bottom-action-bar {
@@ -511,38 +598,116 @@
 		left: 0;
 		right: 0;
 		bottom: 92px;
-		padding-top: 16px;
-		padding-right: 24px;
-		padding-bottom: 24px;
-		padding-left: 24px;
-		border-top-width: 1px;
-		border-top-style: solid;
-		border-top-color: rgba(189, 201, 202, 0.1);
-		background-color: rgba(255, 255, 255, 0.94);
+		padding-top: 14px;
+		padding-right: 16px;
+		padding-bottom: 18px;
+		padding-left: 16px;
+		border-top-left-radius: 24px;
+		border-top-right-radius: 24px;
+		background-color: rgba(247, 250, 250, 0.9);
 		z-index: 20;
 	}
 
-	.save-button {
-		height: 56px;
-		border-radius: 28px;
-		background-color: #006067;
+	.bottom-action-row {
 		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	.step-button {
+		position: relative;
+		width: 28%;
+		height: 66px;
+		border-radius: 8px;
+		justify-content: center;
+		align-items: center;
+		background-color: transparent;
+	}
+
+	.step-button-primary {
+		background-color: #006067;
+	}
+
+	.step-button-recording {
+		background-color: rgba(0, 96, 103, 0.14);
+	}
+
+	.step-arrow-wrap {
+		width: 8%;
 		align-items: center;
 		justify-content: center;
 	}
 
-	.save-button-icon {
+	.step-arrow {
 		font-size: 20px;
 		line-height: 20px;
+		color: rgba(110, 121, 122, 0.6);
+	}
+
+	.step-index {
+		position: absolute;
+		top: 4px;
+		left: 4px;
+		width: 20px;
+		height: 20px;
+		border-radius: 10px;
+		background-color: rgba(0, 96, 103, 0.08);
+		border-width: 1px;
+		border-style: solid;
+		border-color: rgba(0, 96, 103, 0.18);
+		justify-content: center;
+		align-items: center;
+	}
+
+	.step-index-primary {
+		background-color: rgba(255, 255, 255, 0.2);
+		border-color: rgba(255, 255, 255, 0.4);
+	}
+
+	.step-index-text {
+		font-size: 10px;
+		font-weight: 700;
+		line-height: 12px;
+		color: #006067;
+	}
+
+	.step-index-text-primary {
 		color: #ffffff;
 	}
 
-	.save-button-text {
-		margin-left: 8px;
-		font-size: 18px;
-		font-weight: 700;
-		line-height: 22px;
+	.step-icon {
+		font-size: 24px;
+		line-height: 24px;
+		color: #466270;
+	}
+
+	.step-icon-primary {
 		color: #ffffff;
+	}
+
+	.step-label {
+		margin-top: 4px;
+		font-size: 10px;
+		font-weight: 600;
+		line-height: 12px;
+		color: #466270;
+	}
+
+	.step-label-primary {
+		color: #ffffff;
+	}
+
+	.voice-error-inline {
+		font-size: 12px;
+		line-height: 16px;
+		color: #ba1a1a;
+	}
+
+	.voice-transcript-inline {
+		margin-top: 4px;
+		font-size: 11px;
+		line-height: 15px;
+		color: #466270;
 	}
 
 	.material-symbols-outlined {

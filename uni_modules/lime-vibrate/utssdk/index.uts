@@ -1,0 +1,10 @@
+export function vibrate(duration: number = 150) {
+	uni.vibrate({
+		success: function () {
+			console.log('lime-vibrate success');
+		},
+		fail(err) {
+			console.log('lime-vibrate 振动失败', err);
+		}
+	});
+}

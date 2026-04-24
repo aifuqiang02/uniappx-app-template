@@ -1,0 +1,229 @@
+<template>
+	<view class="page-shell">
+		<view class="top-bar" :style="topBarStyle()">
+			<view class="top-bar-left" @click="handleBack">
+				<text class="back-icon material-symbols-outlined">arrow_back</text>
+				<text class="top-bar-title">编辑药品</text>
+			</view>
+		</view>
+
+		<MedicineEntryTab
+			:editingMedicineId="medicineEntryDraftState.editingMedicineId"
+			:uploadedImages="medicineEntryDraftState.uploadedImages"
+			:formName="medicineEntryDraftState.formName"
+			:formInstructions="medicineEntryDraftState.formInstructions"
+			:formExpiry="medicineEntryDraftState.formExpiry"
+			:formQuantity="medicineEntryDraftState.formQuantity"
+			:formQuantityUnit="medicineEntryDraftState.formQuantityUnit"
+			:aiStage="medicineEntryDraftState.aiStage"
+			:aiErrorMessage="medicineEntryDraftState.aiErrorMessage"
+			:voiceStage="medicineEntryDraftState.voiceStage"
+			:voiceErrorMessage="medicineEntryDraftState.voiceErrorMessage"
+			:voiceTranscript="medicineEntryDraftState.voiceTranscript"
+			:contentScrollStyle="contentScrollStyle"
+			:safeTopInset="safeTopInset + 44"
+			@todo="handleTodoEvent"
+			@chooseImage="chooseImage"
+			@startVoiceRecord="startVoiceRecord"
+			@stopVoiceRecord="stopVoiceRecord"
+			@removeImage="removeImage"
+			@save="handleEntrySubmitted"
+			@update:formName="handleFormNameChange"
+			@update:formInstructions="handleFormInstructionsChange"
+			@update:formExpiry="handleFormExpiryChange"
+			@update:formQuantity="handleFormQuantityChange"
+			@update:formQuantityUnit="handleFormQuantityUnitChange"
+		/>
+	</view>
+</template>
+
+<script setup lang="uts">
+	import { ref } from 'vue'
+	import { getAccessToken } from '../../lib/auth.uts'
+	import { getErrorMessage } from '../../lib/api.uts'
+	import {
+		medicineEntryDraftState,
+		resetMedicineEntryDraftState,
+		setMedicineEntryFormExpiry,
+		setMedicineEntryFormInstructions,
+		setMedicineEntryFormName,
+		setMedicineEntryFormQuantity,
+		setMedicineEntryFormQuantityUnit,
+	} from '../../store/medicine-entry-draft-state.uts'
+	import {
+		chooseImageAction,
+		removeImageAction,
+		saveMedicineEntryAction,
+		startVoiceRecordAction,
+		stopVoiceRecordAction,
+	} from '../home/home-logic.uts'
+	import MedicineEntryTab from '../home/components/medicine-entry-tab.uvue'
+
+	const contentScrollStyle = ref('')
+	const safeTopInset = ref(0)
+
+	function topBarStyle() {
+		return 'padding-top:' + safeTopInset.value + 'px;height:' + (safeTopInset.value + 44) + 'px;'
+	}
+
+	function updateLayout() {
+		const windowInfo = uni.getWindowInfo()
+		const windowHeight = windowInfo.windowHeight as number
+		const statusBarHeight = windowInfo.statusBarHeight as number
+		const safeAreaInsets = windowInfo.safeAreaInsets
+		let topInset = statusBarHeight
+		if (safeAreaInsets != null) {
+			const safeTop = safeAreaInsets.top as number
+			if (safeTop > topInset) {
+				topInset = safeTop
+			}
+		}
+		if (topInset > 20) {
+			topInset = topInset - 20
+		}
+		safeTopInset.value = topInset
+		const headerHeight = topInset + 44
+		contentScrollStyle.value = 'height:' + (windowHeight - headerHeight) + 'px;'
+	}
+
+	function handleBack() {
+		uni.navigateBack()
+	}
+
+	function handleTodoEvent(name : string) {
+		uni.showToast({
+			title: name + '待接入',
+			icon: 'none'
+		})
+	}
+
+	function handleFormNameChange(value : string) {
+		setMedicineEntryFormName(value)
+	}
+
+	function handleFormInstructionsChange(value : string) {
+		setMedicineEntryFormInstructions(value)
+	}
+
+	function handleFormExpiryChange(value : string) {
+		setMedicineEntryFormExpiry(value)
+	}
+
+	function handleFormQuantityChange(value : string) {
+		setMedicineEntryFormQuantity(value)
+	}
+
+	function handleFormQuantityUnitChange(value : string) {
+		setMedicineEntryFormQuantityUnit(value)
+	}
+
+	async function chooseImage() {
+		const errorMessage = await chooseImageAction()
+		if (errorMessage != null && errorMessage != '') {
+			uni.showToast({
+				title: errorMessage,
+				icon: 'none'
+			})
+		}
+	}
+
+	function startVoiceRecord() {
+		startVoiceRecordAction()
+	}
+
+	async function stopVoiceRecord() {
+		const errorMessage = await stopVoiceRecordAction()
+		if (errorMessage != null && errorMessage != '') {
+			uni.showToast({
+				title: errorMessage,
+				icon: 'none'
+			})
+		}
+	}
+
+	function removeImage(index : number) {
+		removeImageAction(index)
+	}
+
+	async function handleEntrySubmitted(detail : UTSJSONObject) {
+		try {
+			const result = await saveMedicineEntryAction(detail)
+			const success = result['success'] as boolean
+			if (!success) {
+				uni.showToast({
+					title: result['message'] as string,
+					icon: 'none'
+				})
+				return
+			}
+
+			uni.setStorageSync('medicine_changed', '1')
+			uni.showToast({
+				title: '药品已更新',
+				icon: 'success'
+			})
+			resetMedicineEntryDraftState()
+			setTimeout(() => {
+				uni.navigateBack()
+			}, 300)
+		} catch (error) {
+			uni.showToast({
+				title: getErrorMessage(error, '保存失败'),
+				icon: 'none'
+			})
+		}
+	}
+
+	updateLayout()
+
+	onShow(() => {
+		updateLayout()
+		const token = getAccessToken()
+		if (token == null || token == '') {
+			uni.reLaunch({
+				url: '/pages/login/index'
+			})
+			return
+		}
+		if (medicineEntryDraftState.editingMedicineId == '') {
+			uni.navigateBack()
+		}
+	})
+</script>
+
+<style>
+	.page-shell {
+		min-height: 1000px;
+		background-color: #f1f4f4;
+	}
+
+	.top-bar {
+		padding-left: 16px;
+		padding-right: 16px;
+		background-color: rgba(247, 250, 250, 0.96);
+		justify-content: center;
+	}
+
+	.top-bar-left {
+		flex-direction: row;
+		align-items: center;
+	}
+
+	.back-icon {
+		font-size: 22px;
+		line-height: 22px;
+		color: #00363b;
+	}
+
+	.top-bar-title {
+		margin-left: 10px;
+		font-size: 17px;
+		font-weight: 600;
+		line-height: 22px;
+		color: #00363b;
+	}
+
+	.material-symbols-outlined {
+		font-family: 'Material Symbols Outlined';
+	}
+</style>

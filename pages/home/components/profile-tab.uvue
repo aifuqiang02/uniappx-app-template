@@ -47,18 +47,10 @@
 					</view>
 
 					<view class="menu-card">
-						<view class="menu-item menu-item-border" @click="emit('todo', '设置')">
-							<view class="menu-left">
-								<text class="menu-icon material-symbols-outlined">settings</text>
-								<text class="menu-text">设置</text>
-							</view>
-							<text class="menu-arrow material-symbols-outlined">chevron_right</text>
-						</view>
-
-						<view class="menu-item" @click="emit('todo', '关于我们')">
+						<view class="menu-item" @click="emit('todo', '关于我们&联系')">
 							<view class="menu-left">
 								<text class="menu-icon material-symbols-outlined">info</text>
-								<text class="menu-text">关于我们</text>
+								<text class="menu-text">关于我们&联系</text>
 							</view>
 							<text class="menu-arrow material-symbols-outlined">chevron_right</text>
 						</view>

@@ -36,3 +36,45 @@ export function chooseImageRaw(maxCount : number) : Promise<UTSJSONObject> {
 		})
 	})
 }
+
+export function chooseCameraImageRaw(maxCount : number) : Promise<UTSJSONObject> {
+	return new Promise((resolve, reject) => {
+		console.log('[media.chooseCameraImageRaw] start maxCount', maxCount)
+		uni.chooseImage({
+			count: maxCount,
+			sizeType: ['compressed'],
+			sourceType: ['camera'],
+			success: (result) => {
+				const payload : UTSJSONObject = {
+					'tempFilePaths': result.tempFilePaths,
+					'tempFiles': result.tempFiles
+				}
+				console.log('[media.chooseCameraImageRaw] success', JSON.stringify(payload))
+				resolve(payload)
+			},
+			fail: (error) => {
+				console.log('[media.chooseCameraImageRaw] fail raw', JSON.stringify(error))
+				reject(toChooseImageError(error))
+			}
+		})
+	})
+}
+
+export function readFileBase64(filePath : string) : Promise<UTSJSONObject> {
+	return new Promise((resolve, reject) => {
+		const fileSystemManager = uni.getFileSystemManager()
+		fileSystemManager.readFile({
+			filePath,
+			encoding: 'base64',
+			success: (result) => {
+				const payload : UTSJSONObject = {
+					'data': result.data,
+				}
+				resolve(payload)
+			},
+			fail: (error) => {
+				reject(error instanceof Error ? error : new Error('读取音频失败'))
+			}
+		})
+	})
+}

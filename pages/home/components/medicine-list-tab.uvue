@@ -7,7 +7,16 @@
 
 			<scroll-view scroll-y direction="vertical" show-scrollbar class="content-scroll" :style="contentScrollStyle">
 				<view class="content">
-					<view class="search-section">
+					<view v-if="voiceSearchStatusText != '' || voiceSearchTranscript != ''" class="voice-search-result-card">
+						<text class="voice-search-result-label">语音筛药</text>
+						<text class="voice-search-result-text" :class="voiceSearchStage == 'failed' ? 'voice-search-result-text-error' : ''">{{ voiceSearchStatusText }}</text>
+						<text v-if="voiceSearchTranscript != ''" class="voice-search-result-text">识别文本：{{ voiceSearchTranscript }}</text>
+						<view v-if="voiceSearchStage == 'ready' || voiceSearchStage == 'failed'" class="voice-search-clear-button" @click="emit('clearAiVoice')">
+							<text class="voice-search-clear-button-text">清除语音筛选</text>
+						</view>
+					</view>
+
+					<view v-if="!shouldHideManualSearch()" class="search-section">
 						<view class="search-bar">
 							<text class="search-icon material-symbols-outlined">search</text>
 							<input
@@ -49,7 +58,6 @@
 						<view class="medicine-main">
 							<view class="medicine-copy">
 								<text class="medicine-name">{{ medicineName(item) }}</text>
-								<text class="medicine-category">{{ medicineCategory(item) }}</text>
 							</view>
 
 							<view class="medicine-meta-row">
@@ -88,7 +96,15 @@
 			</view>
 		</view>
 
-		<view class="ai-fab" @click="emit('ai')">
+		<view v-if="props.voiceSearchActive" class="ai-fab-hint">
+			<text class="ai-fab-hint-text">松开发送</text>
+		</view>
+
+		<view v-if="voiceSearchStatusText != ''" class="voice-status-floating-bar" :class="voiceSearchStage == 'failed' ? 'voice-status-floating-bar-error' : ''">
+			<text class="voice-status-floating-bar-text">{{ voiceSearchStatusText }}</text>
+		</view>
+
+		<view class="ai-fab" :class="props.voiceSearchActive ? 'ai-fab-active' : ''" @touchstart="handleAiTouchStart" @touchend="handleAiTouchEnd" @touchcancel="handleAiTouchEnd">
 			<text class="ai-fab-icon material-symbols-outlined">auto_awesome</text>
 		</view>
 	</view>
@@ -97,12 +113,17 @@
 <script setup lang="uts">
 	import { ref } from 'vue'
 	import { createEntryDraft } from '../home-logic.uts'
+	import { vibrate } from '@/uni_modules/lime-vibrate'
 
-	const emit = defineEmits(['update:keyword', 'search', 'changeStatus', 'edit', 'delete', 'ai'])
+	const emit = defineEmits(['update:keyword', 'search', 'changeStatus', 'edit', 'delete', 'startAiVoice', 'stopAiVoice', 'clearAiVoice'])
 	const props = defineProps<{
 		keyword: string
 		selectedStatus: string
 		medicines: any[]
+		voiceSearchTranscript: string
+		voiceSearchActive: boolean
+		voiceSearchStage: string
+		voiceSearchStatusText: string
 		contentScrollStyle: string
 		safeTopInset: number
 	}>()
@@ -112,6 +133,19 @@
 
 	function handleKeywordInput(event : InputEvent) {
 		emit('update:keyword', event.detail.value)
+	}
+
+	function handleAiTouchStart() {
+		vibrate()
+		emit('startAiVoice')
+	}
+
+	function handleAiTouchEnd() {
+		emit('stopAiVoice')
+	}
+
+	function shouldHideManualSearch() {
+		return props.voiceSearchStage != 'idle'
 	}
 
 	function handleEdit(item : any) {
@@ -158,11 +192,6 @@
 	function medicineName(item : any) {
 		const medicine = item as UTSJSONObject
 		return medicine['name'] as string
-	}
-
-	function medicineCategory(item : any) {
-		const medicine = item as UTSJSONObject
-		return medicine['category'] as string
 	}
 
 	function medicineImage(item : any) {
@@ -237,6 +266,52 @@
 
 	.search-section {
 		margin-bottom: 24px;
+	}
+
+	.voice-search-result-card {
+		margin-bottom: 16px;
+		padding-top: 12px;
+		padding-right: 14px;
+		padding-bottom: 12px;
+		padding-left: 14px;
+		border-radius: 14px;
+		background-color: rgba(150, 241, 250, 0.16);
+	}
+
+	.voice-search-result-label {
+		font-size: 12px;
+		font-weight: 700;
+		line-height: 16px;
+		color: #006067;
+	}
+
+	.voice-search-result-text {
+		margin-top: 4px;
+		font-size: 13px;
+		line-height: 18px;
+		color: #466270;
+	}
+
+	.voice-search-result-text-error {
+		color: #ba1a1a;
+	}
+
+	.voice-search-clear-button {
+		align-self: flex-start;
+		margin-top: 10px;
+		padding-top: 8px;
+		padding-right: 10px;
+		padding-bottom: 8px;
+		padding-left: 10px;
+		border-radius: 999px;
+		background-color: rgba(0, 96, 103, 0.12);
+	}
+
+	.voice-search-clear-button-text {
+		font-size: 12px;
+		font-weight: 600;
+		line-height: 16px;
+		color: #006067;
 	}
 
 	.search-bar {
@@ -384,13 +459,6 @@
 		color: #181c1d;
 	}
 
-	.medicine-category {
-		margin-top: 4px;
-		font-size: 14px;
-		line-height: 18px;
-		color: #667172;
-	}
-
 	.medicine-meta-row {
 		margin-top: 16px;
 		flex-direction: row;
@@ -530,6 +598,56 @@
 		justify-content: center;
 		align-items: center;
 		z-index: 20;
+	}
+
+	.ai-fab-active {
+		background-color: #007b83;
+	}
+
+	.ai-fab-hint {
+		position: fixed;
+		right: 92px;
+		bottom: 128px;
+		padding-top: 10px;
+		padding-right: 12px;
+		padding-bottom: 10px;
+		padding-left: 12px;
+		border-radius: 12px;
+		background-color: rgba(0, 96, 103, 0.9);
+		z-index: 20;
+	}
+
+	.ai-fab-hint-text {
+		font-size: 13px;
+		font-weight: 600;
+		line-height: 16px;
+		color: #ffffff;
+	}
+
+	.voice-status-floating-bar {
+		position: fixed;
+		left: 16px;
+		right: 16px;
+		bottom: 118px;
+		padding-top: 12px;
+		padding-right: 16px;
+		padding-bottom: 12px;
+		padding-left: 16px;
+		border-radius: 14px;
+		background-color: rgba(0, 96, 103, 0.92);
+		z-index: 19;
+	}
+
+	.voice-status-floating-bar-error {
+		background-color: rgba(186, 26, 26, 0.92);
+	}
+
+	.voice-status-floating-bar-text {
+		font-size: 13px;
+		font-weight: 600;
+		line-height: 18px;
+		text-align: center;
+		color: #ffffff;
 	}
 
 	.ai-fab-icon {

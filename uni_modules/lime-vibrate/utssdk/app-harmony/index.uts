@@ -1,0 +1,26 @@
+import { vibrator } from '@kit.SensorServiceKit';
+import { BusinessError } from '@kit.BasicServicesKit';
+
+
+export function vibrate(duration : number = 150) {
+	try {
+		vibrator.startVibration(
+			{
+				type: 'time',
+				duration: duration
+			} as ESObject, 
+			{
+				id: 0,
+				usage: 'alarm'
+			} as ESObject, 
+			(error: BusinessError) => {
+				if (error) {
+				    console.error(`Failed to start vibration. Code: ${error.code}, message: ${error.message}`);
+				    return;
+				}
+			});
+	} catch (err) {
+		let e: BusinessError = err as BusinessError;
+		console.error(`An unexpected error occurred. Code: ${e.code}, message: ${e.message}`);
+	}
+}

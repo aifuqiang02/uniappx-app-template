@@ -37,7 +37,11 @@
 					"xxhdpi": "",
 					"xxxhdpi": ""
 				}
-			}
+			},
+			"permissions": [
+			        "<uses-permission android:name=\"android.permission.READ_MEDIA_IMAGES\"/>",
+			        "<uses-permission android:name=\"android.permission.READ_MEDIA_VIDEO\"/>"
+			]
 		}
 	},
 	"app-android": {
@@ -51,7 +55,8 @@
 			},
 			"splashScreens": {
 				"default": {}
-			}
+			},
+			"permissions": ""
 		}
 	},
 	"app-ios": {
